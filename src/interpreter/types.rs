@@ -1,4 +1,12 @@
+use std::env::Args;
+
 use crate::parser::Node;
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub enum Fun {
+    Node(Node),
+    Builtin(fn(Vec<CocoValue>) -> CocoValue)
+}
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum CocoValue {
@@ -8,7 +16,7 @@ pub enum CocoValue {
     CocoArray(Vec<Box<CocoValue>>),
     // CocoObject
     // FIXME: args
-    CocoFunction(Vec<String>, Node),
+    CocoFunction(Vec<String>, Fun),
     // CocoClass
     CocoNull
 }

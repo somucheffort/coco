@@ -14,8 +14,7 @@ use interpreter::{ scope::Scope, Interpreter };
 
 fn main() {
     let mut lexer = Lexer::new("
-    let b = '123'
-    let c = b.length
+    let a = log(2)
     ");
     lexer.analyse();
 

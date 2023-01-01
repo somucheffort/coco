@@ -124,7 +124,7 @@ impl Parser {
 
                 println!("{:#?}", value);
 
-                return Ok(
+                Ok(
                     Node::Assign(
                         Box::new(
                             Node::Var(name?.text)
@@ -147,7 +147,7 @@ impl Parser {
                 }
                 let block = self.block();
 
-                return Ok(
+                Ok(
                     Node::Fun(
                         Box::new(
                             Node::Var(name?.text)
@@ -171,7 +171,7 @@ impl Parser {
                     else_statement = Some(self.statement_or_block()?);
                 }
 
-                return Ok(
+                Ok(
                     Node::IfElseStatement(
                         Box::new(condition?),
                         Box::new(if_statement?),
@@ -179,34 +179,14 @@ impl Parser {
                     )
                 )
             },
-            TokenType::SWITCH => return self.switch_statement(),
+            TokenType::SWITCH => self.switch_statement(),
             TokenType::RETURN => {
                 self.match_token(TokenType::RETURN);
                 let returning = self.expression();
-                return Ok(Node::Return(Box::new(returning?)))
+                Ok(Node::Return(Box::new(returning?)))
             },
-            _ => {
-                /*
-                let var_val = self.var_val_expression()?;
-                let suffixes = self.variable_suffixes()?;
-
-                println!("{:#?} {:#?}", var_val, suffixes);
-
-                if self.get_token(None).token_type == TokenType::LPAR {
-                    if suffixes.is_empty() {
-                        return Ok(Node::ExprStatement(Box::new(self.function_chain_expression(var_val)?)));
-                    }
-                    return Ok(Node::ExprStatement(Box::new(self.function_chain_expression(Node::FieldAccess(Box::new(var_val), suffixes))?)));
-                }
-
-                //Ok(Node::ExprStatement(Box::new(self.function_call_expression()?)));
-                 */
-            }
+            _ => Ok(Node::ExprStatement(Box::new(self.expression()?)))
         }
-
-        println!("{:#?}", current);
-
-        panic!("Unknown statement")
     }
 
     pub fn switch_statement(&mut self) -> Result<Node, String> {
@@ -221,7 +201,6 @@ impl Parser {
         self.match_token(TokenType::LBRACE);
         while let Err(_b) = self.match_token(TokenType::RBRACE) {
             let current = self.get_token(None);
-            println!("{:#?}", current);
             match current.token_type {
                 
                 TokenType::DEFAULT => {
@@ -248,7 +227,6 @@ impl Parser {
 
                     if case_current.token_type != TokenType::CASE && case_current.token_type != TokenType::DEFAULT {
                         statement = Some(self.statement_or_block()?);
-                        println!("{:#?}", statement)
                     }
                     cases.push(SwitchCase::Case(value?, statement))
                 },
@@ -281,12 +259,11 @@ impl Parser {
             TokenType::LBRACKET |
             TokenType::NULL => {
                 let var_val = self.var_val_expression()?;
-
-                println!("12 {:#?}", self.get_token(None));
-
                 let field_access = self.field_access_expression(var_val)?;
 
-                println!("13 {:#?}", field_access);
+                if self.get_token(None).token_type == TokenType::LPAR {
+                    return self.function_chain_expression(field_access)
+                }
 
                 Ok(field_access)
             },
@@ -307,14 +284,13 @@ impl Parser {
     }
 
     pub fn function_chain_expression(&mut self, variable: Node) -> Result<Node, String> {
-        let current = self.get_token(None);
         let fun_call = self.function_call_expression(variable);
 
-        if current.token_type == TokenType::LPAR {
+        if self.get_token(None).token_type == TokenType::LPAR {
             return self.function_chain_expression(fun_call?);
         }
 
-        if current.token_type == TokenType::DOT {
+        if self.get_token(None).token_type == TokenType::DOT {
             let suffixes = self.variable_suffixes()?;
             if suffixes.is_empty() {
                 return fun_call;
@@ -331,7 +307,6 @@ impl Parser {
     }
 
     pub fn function_call_expression(&mut self, variable: Node) -> Result<Node, String> {
-        println!("{:#?}", self.get_token(None));
         self.consume_token(TokenType::LPAR);
         let mut args = vec![];
 
@@ -359,16 +334,14 @@ impl Parser {
 
         let mut indices = vec![];
 
-        if current.token_type == TokenType::DOT || current.token_type == TokenType::LBRACKET {
-            loop {
-                if self.match_token(TokenType::DOT).is_ok() {
-                    let field = self.consume_token(TokenType::WORD)?.text;
-                    indices.push(Box::new(Node::String(field)));
-                }
-                if self.match_token(TokenType::LBRACKET).is_ok() {
-                    indices.push(Box::new(self.expression()?));
-                    self.match_token(TokenType::RBRACKET);
-                }
+        while self.get_token(None).token_type == TokenType::DOT || self.get_token(None).token_type == TokenType::LBRACKET {
+            if self.match_token(TokenType::DOT).is_ok() {
+                let field = self.consume_token(TokenType::WORD)?.text;
+                indices.push(Box::new(Node::String(field)));
+            }
+            if self.match_token(TokenType::LBRACKET).is_ok() {
+                indices.push(Box::new(self.expression()?));
+                self.match_token(TokenType::RBRACKET);
             }
         } 
 

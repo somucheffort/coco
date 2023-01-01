@@ -1,6 +1,6 @@
-use std::{collections::HashMap};
+use std::{collections::HashMap, env::Args, fmt};
 
-use super::types::CocoValue;
+use super::types::{CocoValue, Fun};
 
 #[derive(Clone, Debug)]
 pub struct Scope {
@@ -12,7 +12,14 @@ impl Scope {
     pub fn new(previous: Option<Box<Scope>>) -> Self {
         Self {
             previous,
-            variables: HashMap::new()
+            variables: HashMap::from([
+                ("log".to_owned(), CocoValue::CocoFunction(vec![], Fun::Builtin(|vals| -> CocoValue {
+                    //fmt::write(output, args)
+                    
+                    println!("{:#?}", vals);
+                    CocoValue::CocoNull
+                })))
+            ])
         }
     }
 

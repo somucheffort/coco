@@ -1,11 +1,12 @@
 use core::panic;
+use std::env::Args;
 
 use crate::parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp };
 
 pub mod scope;
 pub mod types;
 
-use self::{scope::Scope, types::{CocoValue, FieldAccessor}};
+use self::{scope::Scope, types::{CocoValue, FieldAccessor, Fun}};
 
 pub struct Interpreter {}
 
@@ -169,10 +170,38 @@ impl Interpreter {
             },
             Node::Fun(variable, args, block) => {
                 match *variable {
-                    Node::Var(name) => Ok(scope.set(name, CocoValue::CocoFunction(args, *block))),
+                    Node::Var(name) => Ok(scope.set(name, CocoValue::CocoFunction(args, Fun::Node(*block)))),
                     _ => {
                         panic!("Unexpected assign")
                     }
+                }
+            },
+            Node::FunCall(variable, args) => {
+                let value = self.walk_tree(*variable, scope)?;
+                let args_val = args.iter()
+                .map(|arg| self.walk_tree(*arg.to_owned(), scope).unwrap())
+                .collect::<Vec<CocoValue>>();
+
+                match value {
+                    CocoValue::CocoFunction(fun_args, fun_block) => {
+                        match fun_block {
+                            Fun::Node(block) => {
+                                let mut fun_scope = Scope::new(Some(Box::new(scope.to_owned())));
+
+                                for (i, arg) in fun_args.iter().enumerate() {
+                                    let current_arg = self.walk_tree(*args.get(i).unwrap().to_owned(), scope)?;
+                                    fun_scope.set(arg.to_owned(), current_arg);
+                                }
+
+                                self.walk_tree(block, &mut fun_scope)
+                            },
+                            Fun::Builtin(f) => {
+                                Ok(f(args_val))
+                            }
+                        }
+                        
+                    },
+                    _ => panic!("FIXME")
                 }
             },
             Node::SwitchStatement(variable, switch_cases) => {
