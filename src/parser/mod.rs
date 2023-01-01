@@ -55,6 +55,8 @@ pub enum Node {
     Var(String),
     FieldAccess(Box<Node>, Vec<Box<Node>>),
 
+    ExprStatement(Box<Node>),
+
     BlockStatement(Vec<Box<Node>>),
     IfElseStatement(Box<Node>, Box<Node>, Box<Option<Node>>),
     SwitchStatement(Box<Node>, Vec<SwitchCase>),
@@ -177,16 +179,28 @@ impl Parser {
                     )
                 )
             },
-            TokenType::SWITCH => {
-                return Ok(self.switch_statement()?)
-            },
+            TokenType::SWITCH => return self.switch_statement(),
             TokenType::RETURN => {
                 self.match_token(TokenType::RETURN);
                 let returning = self.expression();
                 return Ok(Node::Return(Box::new(returning?)))
-            }
+            },
             _ => {
+                /*
+                let var_val = self.var_val_expression()?;
+                let suffixes = self.variable_suffixes()?;
 
+                println!("{:#?} {:#?}", var_val, suffixes);
+
+                if self.get_token(None).token_type == TokenType::LPAR {
+                    if suffixes.is_empty() {
+                        return Ok(Node::ExprStatement(Box::new(self.function_chain_expression(var_val)?)));
+                    }
+                    return Ok(Node::ExprStatement(Box::new(self.function_chain_expression(Node::FieldAccess(Box::new(var_val), suffixes))?)));
+                }
+
+                //Ok(Node::ExprStatement(Box::new(self.function_call_expression()?)));
+                 */
             }
         }
 
@@ -213,10 +227,7 @@ impl Parser {
                 TokenType::DEFAULT => {
                     self.match_token(TokenType::DEFAULT);
                     let count_default_cases = cases.iter().filter(|&case| -> bool {
-                        match case {
-                            SwitchCase::Default(_) => true,
-                            _ => false
-                        }
+                        matches!(case, SwitchCase::Default(_))
                     }).count();
 
                     if count_default_cases == 1 {
@@ -254,7 +265,7 @@ impl Parser {
     }
 
     pub fn expression(&mut self) -> Result<Node, String> {
-        Ok(self.ternary_expression()?)
+        self.ternary_expression()
     }
 
     pub fn primary_expression(&mut self) -> Result<Node, String> {
@@ -262,13 +273,30 @@ impl Parser {
 
         // FIXME
         match current.token_type {
-            TokenType::WORD => Ok(self.variable_expression()?),
+            TokenType::WORD |
 
             TokenType::STRING |
             TokenType::NUMBER |
             TokenType::BOOLEAN |
             TokenType::LBRACKET |
-            TokenType::NULL => Ok(self.value_expression()?),
+            TokenType::NULL => {
+                let var_val = self.var_val_expression()?;
+
+                println!("12 {:#?}", self.get_token(None));
+
+                let field_access = self.field_access_expression(var_val)?;
+
+                println!("13 {:#?}", field_access);
+
+                Ok(field_access)
+            },
+
+            TokenType::LPAR => {
+                self.match_token(TokenType::LPAR);
+                let expr = self.expression()?;
+                self.match_token(TokenType::RPAR);
+                Ok(expr)
+            },
             
             TokenType::SWITCH => Ok(self.switch_statement()?),
             _ => {
@@ -276,6 +304,51 @@ impl Parser {
                 panic!("Unknown expression")
             }
         }
+    }
+
+    pub fn function_chain_expression(&mut self, variable: Node) -> Result<Node, String> {
+        let current = self.get_token(None);
+        let fun_call = self.function_call_expression(variable);
+
+        if current.token_type == TokenType::LPAR {
+            return self.function_chain_expression(fun_call?);
+        }
+
+        if current.token_type == TokenType::DOT {
+            let suffixes = self.variable_suffixes()?;
+            if suffixes.is_empty() {
+                return fun_call;
+            }
+
+            if self.get_token(None).token_type == TokenType::LPAR {
+                return self.function_chain_expression(Node::FieldAccess(Box::new(fun_call?), suffixes));
+            }
+
+            return Ok(Node::FieldAccess(Box::new(fun_call?), suffixes))
+        }
+
+        fun_call
+    }
+
+    pub fn function_call_expression(&mut self, variable: Node) -> Result<Node, String> {
+        println!("{:#?}", self.get_token(None));
+        self.consume_token(TokenType::LPAR);
+        let mut args = vec![];
+
+        while let Err(_b) = self.match_token(TokenType::RPAR) {
+            args.push(Box::new(self.expression()?));
+            self.match_token(TokenType::COMMA);
+        }
+
+        Ok(Node::FunCall(Box::new(variable), args))
+    }
+
+    pub fn var_val_expression(&mut self) -> Result<Node, String> {
+        if self.get_token(None).token_type == TokenType::WORD {
+            return self.variable_expression()
+        }
+
+        self.value_expression()
     }
 
     pub fn variable_suffixes(&mut self) -> Result<Vec<Box<Node>>, String>{
@@ -286,24 +359,26 @@ impl Parser {
 
         let mut indices = vec![];
 
-        while current.token_type == TokenType::DOT || current.token_type == TokenType::LBRACKET {
-            if self.match_token(TokenType::DOT).is_ok() {
-                let field = self.consume_token(TokenType::WORD)?.text;
-                indices.push(Box::new(Node::String(field)));
+        if current.token_type == TokenType::DOT || current.token_type == TokenType::LBRACKET {
+            loop {
+                if self.match_token(TokenType::DOT).is_ok() {
+                    let field = self.consume_token(TokenType::WORD)?.text;
+                    indices.push(Box::new(Node::String(field)));
+                }
+                if self.match_token(TokenType::LBRACKET).is_ok() {
+                    indices.push(Box::new(self.expression()?));
+                    self.match_token(TokenType::RBRACKET);
+                }
             }
-            if self.match_token(TokenType::LBRACKET).is_ok() {
-                indices.push(Box::new(self.expression()?));
-                self.match_token(TokenType::RBRACKET);
-            }
-        }
+        } 
 
         Ok(indices)
     }
 
-    pub fn variable_fields_expression(&mut self, variable: Node) -> Result<Node, String> {
+    pub fn field_access_expression(&mut self, variable: Node) -> Result<Node, String> {
         let indices = self.variable_suffixes()?;
 
-        if indices.len() > 0 {
+        if !indices.is_empty() {
             return Ok(Node::FieldAccess(Box::new(variable), indices))
         }
 
@@ -366,90 +441,141 @@ impl Parser {
     }
 
     pub fn ternary_expression(&mut self) -> Result<Node, String> {
-        let mut result = self.logical_expression().unwrap();
+        let mut result = self.logical_or_expression()?;
 
         if self.match_token(TokenType::QUESTION).is_ok() {
-            let true_condition = self.expression().unwrap();
+            let true_condition = self.expression()?;
             self.consume_token(TokenType::COLON);
-            let false_condition = self.expression().unwrap();
+            let false_condition = self.expression()?;
             result = Node::Ternary(Box::new(true_condition), Box::new(false_condition));
         }
 
         Ok(result)
     }
 
-    pub fn logical_expression(&mut self) -> Result<Node, String> {
-        let mut result = self.unary_expression().unwrap();
-
+    pub fn logical_or_expression(&mut self) -> Result<Node, String> {
+        let mut result = self.logical_and_expression()?;
         loop {
             if self.match_token(TokenType::BARBAR).is_ok() {
-                result = Node::Logical(LogicalOp::OR, Box::new(result), Box::new(self.unary_expression().unwrap()));
-            }
-            if self.match_token(TokenType::AMPAMP).is_ok() {
-                result = Node::Logical(LogicalOp::AND, Box::new(result), Box::new(self.unary_expression().unwrap()));
-            }
-            if self.match_token(TokenType::EQEQ).is_ok() {
-                result = Node::Logical(LogicalOp::EQ, Box::new(result), Box::new(self.unary_expression().unwrap()));
-            }
-            if self.match_token(TokenType::EXCLEQ).is_ok() {
-                result = Node::Logical(LogicalOp::NOTEQ, Box::new(result), Box::new(self.unary_expression().unwrap()));
-            }
-            if self.match_token(TokenType::GT).is_ok() {
-                result = Node::Logical(LogicalOp::GT, Box::new(result), Box::new(self.unary_expression().unwrap()));
-            }
-            if self.match_token(TokenType::GTEQ).is_ok() {
-                result = Node::Logical(LogicalOp::GTEQ, Box::new(result), Box::new(self.unary_expression().unwrap()));
-            }
-            if self.match_token(TokenType::LT).is_ok() {
-                result = Node::Logical(LogicalOp::LT, Box::new(result), Box::new(self.unary_expression().unwrap()));
-            }
-            if self.match_token(TokenType::LTEQ).is_ok() {
-                result = Node::Logical(LogicalOp::LTEQ, Box::new(result), Box::new(self.unary_expression().unwrap()));
+                result = Node::Logical(LogicalOp::OR, Box::new(result), Box::new(self.logical_and_expression()?));
+                continue;
             }
             break
+        }
+
+        Ok(result)
+    }
+
+    pub fn logical_and_expression(&mut self) -> Result<Node, String> {
+        let mut result = self.logical_eq_expression()?;
+        loop {
+            if self.match_token(TokenType::AMPAMP).is_ok() {
+                result = Node::Logical(LogicalOp::AND, Box::new(result), Box::new(self.logical_eq_expression()?));
+                continue;
+            }
+            break
+        }
+
+        Ok(result)
+    }
+
+    pub fn logical_eq_expression(&mut self) -> Result<Node, String> {
+        let mut result = self.logical_cond_expression()?;
+        loop {
+            if self.match_token(TokenType::EQEQ).is_ok() {
+                result = Node::Logical(LogicalOp::EQ, Box::new(result), Box::new(self.logical_cond_expression()?));
+                continue;
+            }
+            if self.match_token(TokenType::EXCLEQ).is_ok() {
+                result = Node::Logical(LogicalOp::NOTEQ, Box::new(result), Box::new(self.logical_cond_expression()?));
+                continue;
+            }
+            break
+        }
+
+        Ok(result)
+    }
+
+    pub fn logical_cond_expression(&mut self) -> Result<Node, String> {
+        let mut result = self.binary_add_expression()?;
+        loop {
+            if self.match_token(TokenType::GT).is_ok() {
+                result = Node::Logical(LogicalOp::GT, Box::new(result), Box::new(self.binary_add_expression()?));
+                continue;
+            }
+            if self.match_token(TokenType::GTEQ).is_ok() {
+                result = Node::Logical(LogicalOp::GTEQ, Box::new(result), Box::new(self.binary_add_expression()?));
+                continue;
+            }
+            if self.match_token(TokenType::LT).is_ok() {
+                result = Node::Logical(LogicalOp::LT, Box::new(result), Box::new(self.binary_add_expression()?));
+                continue;
+            }
+            if self.match_token(TokenType::LTEQ).is_ok() {
+                result = Node::Logical(LogicalOp::LTEQ, Box::new(result), Box::new(self.binary_add_expression()?));
+                continue;
+            }
+            break
+        }
+
+        Ok(result)
+    }
+
+    pub fn binary_add_expression(&mut self) -> Result<Node, String> {
+        let mut result = self.binary_mul_expression()?;
+
+        loop {
+            if self.match_token(TokenType::PLUS).is_ok() {
+                result = Node::Binary(BinaryOp::PLUS, Box::new(result), Box::new(self.binary_mul_expression()?));
+                continue;
+            }
+            if self.match_token(TokenType::MINUS).is_ok() {
+                result = Node::Binary(BinaryOp::MINUS, Box::new(result), Box::new(self.binary_mul_expression()?));
+                continue;
+            }
+            break;
+        }
+
+        Ok(result)
+    }
+
+    pub fn binary_mul_expression(&mut self) -> Result<Node, String>  {
+        let mut result = self.unary_expression()?;
+        loop {
+            if self.match_token(TokenType::STAR).is_ok() {
+                result = Node::Binary(BinaryOp::MULTIPLY, Box::new(result), Box::new(self.unary_expression()?));
+                continue;
+            }
+            if self.match_token(TokenType::SLASH).is_ok() {
+                result = Node::Binary(BinaryOp::DIVIDE, Box::new(result), Box::new(self.unary_expression()?));
+                continue;
+            }
+            if self.match_token(TokenType::PERCENT).is_ok() {
+                result = Node::Binary(BinaryOp::REMAINDER, Box::new(result), Box::new(self.unary_expression()?));
+                continue;
+            } 
+            if self.match_token(TokenType::DOUBLESTAR).is_ok() {
+                result = Node::Binary(BinaryOp::EXPONENT, Box::new(result), Box::new(self.unary_expression()?));
+                continue;
+            }
+            break;
         }
 
         Ok(result)
     }
 
     pub fn unary_expression(&mut self) -> Result<Node, String> {
-        let mut result = self.binary_expression().unwrap();
-
+        // FIXME: neverloop
         loop {
-            if self.match_token(TokenType::PLUS).is_ok() {
-                result = Node::Binary(BinaryOp::PLUS, Box::new(result), Box::new(self.binary_expression().unwrap()));
-            }
             if self.match_token(TokenType::MINUS).is_ok() {
-                result = Node::Binary(BinaryOp::MINUS, Box::new(result), Box::new(self.binary_expression().unwrap()));
+                return Ok(Node::Unary(UnaryOp::MINUS, Box::new(self.expression()?)));
             }
-            if self.match_token(TokenType::STAR).is_ok() {
-                result = Node::Binary(BinaryOp::MULTIPLY, Box::new(result), Box::new(self.binary_expression().unwrap()));
+            else if self.match_token(TokenType::EXCL).is_ok() {
+                return Ok(Node::Unary(UnaryOp::NOT, Box::new(self.expression()?)));
+            } else {
+                return Ok(self.primary_expression()?)
             }
-            if self.match_token(TokenType::SLASH).is_ok() {
-                result = Node::Binary(BinaryOp::DIVIDE, Box::new(result), Box::new(self.binary_expression().unwrap()));
-            }
-            if self.match_token(TokenType::PERCENT).is_ok() {
-                result = Node::Binary(BinaryOp::REMAINDER, Box::new(result), Box::new(self.binary_expression().unwrap()));
-            }
-            if self.match_token(TokenType::DOUBLESTAR).is_ok() {
-                result = Node::Binary(BinaryOp::EXPONENT, Box::new(result), Box::new(self.binary_expression().unwrap()));
-            }
-            break
         }
-
-        Ok(result)
-    }
-
-    pub fn binary_expression(&mut self) -> Result<Node, String> {
-        if self.match_token(TokenType::MINUS).is_ok() {
-            return Ok(Node::Unary(UnaryOp::MINUS, Box::new(self.primary_expression().unwrap())));
-        }
-        // FIXME: multiple not
-        if self.match_token(TokenType::EXCL).is_ok() {
-            return Ok(Node::Unary(UnaryOp::NOT, Box::new(self.primary_expression().unwrap())));
-        }
-
-        Ok(self.primary_expression().unwrap())
     }
 
     pub fn consume_token(&mut self, token_type: TokenType) -> Result<Token, String> {

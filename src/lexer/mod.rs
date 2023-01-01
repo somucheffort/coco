@@ -300,8 +300,6 @@ impl Lexer {
             return '\0'
         }
 
-        println!("{:#?}", self.code.chars().nth(31).unwrap());
-
         self.code.chars().nth(current).unwrap()
     }
 
