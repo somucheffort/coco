@@ -68,7 +68,7 @@ pub enum Node {
     Logical(LogicalOp, Box<Node>, Box<Node>),
     Binary(BinaryOp, Box<Node>, Box<Node>),
     Unary(UnaryOp, Box<Node>),
-    Ternary(Box<Node>, Box<Node>)
+    Ternary(Box<Node>, Box<Node>, Box<Node>)
 }
 
 pub struct Parser {
@@ -79,7 +79,7 @@ pub struct Parser {
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Self {
-            tokens: tokens,
+            tokens,
             pos: 0
         }
     }
@@ -107,10 +107,10 @@ impl Parser {
 
     pub fn statement_or_block(&mut self) -> Result<Node, String> {
         if let Ok(_b) = self.match_token(TokenType::LBRACE) {
-            return Ok(self.block()?);
+            return self.block()
         }
 
-        Ok(self.statement()?)
+        self.statement()
     }
 
     pub fn statement(&mut self) -> Result<Node, String> {
@@ -122,8 +122,6 @@ impl Parser {
                 let name = self.consume_token(TokenType::WORD);
                 self.consume_token(TokenType::EQUALS);
                 let value = self.expression();
-
-                //println!("{:#?}", value);
 
                 Ok(
                     Node::Assign(
@@ -434,7 +432,7 @@ impl Parser {
             let true_condition = self.expression()?;
             self.consume_token(TokenType::COLON);
             let false_condition = self.expression()?;
-            result = Node::Ternary(Box::new(true_condition), Box::new(false_condition));
+            result = Node::Ternary(Box::new(result), Box::new(true_condition), Box::new(false_condition));
         }
 
         Ok(result)

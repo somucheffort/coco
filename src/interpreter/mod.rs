@@ -75,6 +75,15 @@ impl Interpreter {
                     .collect::<BTreeMap<String, Box<CocoValue>>>()
                 )
             ),
+            Node::Ternary(node, true_cond, false_cond) => {
+                let value = self.walk_tree(*node, scope)?;
+
+                if value.as_bool() {
+                    return self.walk_tree(*true_cond, scope);
+                }
+
+                self.walk_tree(*false_cond, scope)
+            }
             Node::Logical(operator, node1, node2) => {
                 let val1 = self.walk_tree(*node1, scope);
                 let val2 = self.walk_tree(*node2, scope);

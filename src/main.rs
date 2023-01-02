@@ -25,7 +25,7 @@ fn main() {
     let a = 12
     let b = 3
 
-    log(power(power(a, b), sum(a, b)))
+    log(power(power(a, b), sum(a, b)) > a ? 'yes its BIGGER than a' : 'nope :(')
     ");
     lexer.analyse();
 
