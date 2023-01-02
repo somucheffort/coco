@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use colored::Colorize;
 
 use crate::parser::Node;
@@ -14,7 +16,7 @@ pub enum CocoValue {
     CocoNumber(f64),
     CocoBoolean(bool),
     CocoArray(Vec<Box<CocoValue>>),
-    // CocoObject
+    CocoObject(BTreeMap<String, Box<CocoValue>>),
     // FIXME: args
     CocoFunction(Vec<String>, Fun),
     // CocoClass
@@ -29,6 +31,7 @@ impl CocoValue {
             CocoValue::CocoBoolean(val) => *val,
             CocoValue::CocoArray(values) => !values.is_empty(),
             CocoValue::CocoFunction(_s, _n) => true,
+            CocoValue::CocoObject(map) => !map.is_empty(),
             CocoValue::CocoNull => false
         }
     }
@@ -40,6 +43,7 @@ impl CocoValue {
             CocoValue::CocoBoolean(val) => *val as i64 as f64,
             CocoValue::CocoArray(_values) => f64::NAN,
             CocoValue::CocoFunction(_s, _n) => f64::NAN,
+            CocoValue::CocoObject(_map) => f64::NAN,
             CocoValue::CocoNull => 0.0
         }
     }
@@ -49,21 +53,12 @@ impl CocoValue {
             CocoValue::CocoString(val) => val.to_owned(),
             CocoValue::CocoNumber(val) => val.to_string(),
             CocoValue::CocoBoolean(val) => val.to_string(),
-            CocoValue::CocoArray(values) => {
-                let mut str = "".to_owned();
-                let mut iter = values.iter();
-
-                loop {
-                    let val = iter.next().unwrap();
-                    str.push_str(&val.as_string());
-                    if iter.next().is_some() {
-                        str.push(',')
-                    }
-                } 
-
-                str
-            },
+            CocoValue::CocoArray(values) => values.iter().map(|x| x.as_string()).collect::<Vec<_>>().join(","),
             CocoValue::CocoFunction(_s, _n) => "NotImplemented".to_owned(),
+            CocoValue::CocoObject(map) => map.iter()
+            .map(|x| (x.0, *x.1.to_owned()))
+            .map(|x| format!("{}: {}", x.0, x.1.as_string()))
+            .collect::<Vec<_>>().join(", "),
             CocoValue::CocoNull => "null".to_owned()
         }
     }
@@ -171,9 +166,10 @@ impl std::fmt::Display for CocoValue {
             CocoValue::CocoString(_val) => write!(f, "{}", ("'".to_owned() + &self.as_string() + "'").green()),
             CocoValue::CocoNumber(_val) => write!(f, "{}", &self.as_string().yellow()),
             CocoValue::CocoBoolean(_val) => write!(f, "{}", &self.as_string().blue()),
-            CocoValue::CocoArray(values) => write!(f, "{:#?}", values.iter().map(|x| *x.to_owned()).map(|x| x.to_string()).collect::<Vec<_>>()),
+            CocoValue::CocoArray(values) => write!(f, "[ {} ]", values.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(", ")),
             CocoValue::CocoFunction(_s, _n) => write!(f, "{:#?} {:#?}", _s, _n),
-            CocoValue::CocoNull => write!(f, "null")
+            CocoValue::CocoObject(map) => write!(f, "{{ {}}}", &self.as_string()),
+            CocoValue::CocoNull => write!(f, "{}", "null".bold())
         }
     }
 }

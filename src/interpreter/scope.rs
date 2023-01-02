@@ -14,10 +14,6 @@ impl Scope {
             previous,
             variables: HashMap::from([
                 ("log".to_owned(), CocoValue::CocoFunction(vec![], Fun::Builtin(|vals| -> CocoValue {
-                    //fmt::write(output, args)
-
-                    println!("{:#?}", vals);
-
                     for val in vals.iter() {
                         print!("{} ", val)
                     }

@@ -1,5 +1,5 @@
 use core::panic;
-use std::env::Args;
+use std::{env::Args, collections::BTreeMap};
 
 use crate::parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp };
 
@@ -67,6 +67,14 @@ impl Interpreter {
 
                 Ok(CocoValue::CocoArray(array_values))
             },
+            Node::Object(map) => Ok(
+                CocoValue::CocoObject(
+                    map
+                    .into_iter()
+                    .map(|x| (x.0, Box::new(self.walk_tree(*x.1, scope).unwrap())))
+                    .collect::<BTreeMap<String, Box<CocoValue>>>()
+                )
+            ),
             Node::Logical(operator, node1, node2) => {
                 let val1 = self.walk_tree(*node1, scope);
                 let val2 = self.walk_tree(*node2, scope);
@@ -94,6 +102,7 @@ impl Interpreter {
                             CocoValue::CocoArray(_values) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
                             CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() + val2.as_number())),
                             CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
+                            CocoValue::CocoObject(_map) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
                             CocoValue::CocoNull => Ok(val2)
                         }
                     },
@@ -104,6 +113,7 @@ impl Interpreter {
                             CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() - val2.as_number())),
                             CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                            CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoNull => Ok(CocoValue::CocoNumber(-&val2.as_number()))
                         }
                     },
@@ -114,6 +124,7 @@ impl Interpreter {
                             CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() * val2.as_number())),
                             CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                            CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0))
                         }
                     },
@@ -124,6 +135,7 @@ impl Interpreter {
                             CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() / val2.as_number())),
                             CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                            CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0))
                         }
                     },
@@ -134,6 +146,7 @@ impl Interpreter {
                             CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() % val2.as_number())),
                             CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                            CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0))
                         }
                     },
@@ -144,6 +157,7 @@ impl Interpreter {
                             CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number().powf(val2.as_number()))),
                             CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                            CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0))
                         }
                     }
@@ -160,6 +174,7 @@ impl Interpreter {
                             CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(-value.as_number())),
                             CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                            CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
                             CocoValue::CocoNull => Ok(CocoValue::CocoNumber(-0.0))
                         }
                     },

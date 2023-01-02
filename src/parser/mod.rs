@@ -1,3 +1,5 @@
+use std::collections::{HashMap, BTreeMap};
+
 use crate::lexer::{Token, TokenType};
 use lazy_static::lazy_static;
 
@@ -47,8 +49,9 @@ pub enum Node {
     Number(f64),
     Bool(bool),
     Array(Vec<Box<Node>>),
+    Object(BTreeMap<String, Box<Node>>),
 
-    Null(),
+    Null,
 
     // ArrayFun()
 
@@ -258,6 +261,7 @@ impl Parser {
             TokenType::NUMBER |
             TokenType::BOOLEAN |
             TokenType::LBRACKET |
+            TokenType::LBRACE |
             TokenType::NULL => {
                 let var_val = self.var_val_expression()?;
                 let field_access = self.field_access_expression(var_val)?;
@@ -395,7 +399,7 @@ impl Parser {
             },
             TokenType::NULL => {
                 self.match_token(current.token_type);
-                return Ok(Node::Null())
+                return Ok(Node::Null)
             },
             TokenType::LBRACKET => {
                 self.match_token(TokenType::LBRACKET);
@@ -406,7 +410,19 @@ impl Parser {
                 }
 
                 return Ok(Node::Array(values));
-            }
+            },
+            TokenType::LBRACE => {
+                self.match_token(TokenType::LBRACE);
+                let mut map = BTreeMap::new();
+                while let Err(_b) = self.match_token(TokenType::RBRACE) {
+                    let name = self.consume_token(TokenType::WORD)?.text;
+                    self.consume_token(TokenType::COLON);
+                    map.insert(name, Box::new(self.expression()?));
+                    self.match_token(TokenType::COMMA);   
+                }
+
+                return Ok(Node::Object(map))
+            },
             _ => {
                 // FIXME: ?
                 panic!("Unknown value")
