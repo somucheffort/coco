@@ -1,4 +1,4 @@
-
+use std::{ fs, env };
 
 extern crate phf;
 extern crate lazy_static;
@@ -13,7 +13,9 @@ use interpreter::{ scope::Scope, Interpreter };
 
 
 fn main() {
-    let mut lexer = Lexer::new("
+    let args: Vec<String> = env::args().collect();
+
+    let mut input = "
     fun power(a, b) {
         return a ** b
     }
@@ -26,7 +28,14 @@ fn main() {
     let b = 3
 
     log(power(power(a, b), sum(a, b)) > a ? 'yes its BIGGER than a' : 'nope :(')
-    ");
+    ".to_string();
+
+    if args.len() > 1 {
+        input = fs::read_to_string(&args[1]).unwrap_or(input.to_string());
+    }
+
+    let mut lexer = Lexer::new(&input);
+
     lexer.analyse();
 
     let mut parser = Parser::new(lexer.tokens);

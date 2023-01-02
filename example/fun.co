@@ -1,0 +1,5 @@
+fun sumAndPower(a, b) {
+    return a ** b + b ** a 
+}
+
+log(sumAndPower(2, 3))
