@@ -122,7 +122,7 @@ impl Parser {
                 self.consume_token(TokenType::EQUALS);
                 let value = self.expression();
 
-                println!("{:#?}", value);
+                //println!("{:#?}", value);
 
                 Ok(
                     Node::Assign(

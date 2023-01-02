@@ -1,4 +1,4 @@
-use std::env::Args;
+use colored::Colorize;
 
 use crate::parser::Node;
 
@@ -166,11 +166,12 @@ impl FieldAccessor {
 
 impl std::fmt::Display for CocoValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        
         match self {
-            CocoValue::CocoString(val) => write!(f, "{}", val),
-            CocoValue::CocoNumber(val) => write!(f, "{}", val),
-            CocoValue::CocoBoolean(val) => write!(f, "{}", val),
-            CocoValue::CocoArray(_values) => write!(f, "{:#?}", _values),
+            CocoValue::CocoString(_val) => write!(f, "{}", ("'".to_owned() + &self.as_string() + "'").green()),
+            CocoValue::CocoNumber(_val) => write!(f, "{}", &self.as_string().yellow()),
+            CocoValue::CocoBoolean(_val) => write!(f, "{}", &self.as_string().blue()),
+            CocoValue::CocoArray(values) => write!(f, "{:#?}", values.iter().map(|x| *x.to_owned()).map(|x| x.to_string()).collect::<Vec<_>>()),
             CocoValue::CocoFunction(_s, _n) => write!(f, "{:#?} {:#?}", _s, _n),
             CocoValue::CocoNull => write!(f, "null")
         }

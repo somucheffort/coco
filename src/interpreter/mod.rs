@@ -220,7 +220,7 @@ impl Interpreter {
                                         SwitchCase::Default(next_default_statement) => {
                                             let next_default_statement_value = self.walk_tree(next_default_statement.to_owned(), scope);
 
-                                            println!("{:#?}", next_default_statement);
+                                            //println!("{:#?}", next_default_statement);
 
                                             return next_default_statement_value;
                                         },

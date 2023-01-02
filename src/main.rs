@@ -14,7 +14,8 @@ use interpreter::{ scope::Scope, Interpreter };
 
 fn main() {
     let mut lexer = Lexer::new("
-    let a = log(2)
+    let b = [log]
+    let a = b[0]([ 1, 'te' ])
     ");
     lexer.analyse();
 
@@ -25,8 +26,8 @@ fn main() {
     let mut scope: Scope = Scope::new(None); 
     let result = interpreter.interpret(parsed, &mut scope);
 
-    println!("{:#?}", result);
-    println!("{:#?}", scope);
+    //println!("{:#?}", result);
+    //println!("{:#?}", scope);
 
     //println!("{:#?}", parsed.unwrap());
 }
