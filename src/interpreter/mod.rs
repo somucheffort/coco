@@ -102,6 +102,7 @@ impl Interpreter {
                             CocoValue::CocoArray(_values) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
                             CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() + val2.as_number())),
                             CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
+                            // FIXME: object + number = string
                             CocoValue::CocoObject(_map) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
                             CocoValue::CocoNull => Ok(val2)
                         }

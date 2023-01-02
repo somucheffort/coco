@@ -5,7 +5,7 @@ use super::types::{CocoValue, Fun};
 #[derive(Clone, Debug)]
 pub struct Scope {
     previous: Option<Box<Scope>>,
-    variables: HashMap<String, CocoValue>   
+    variables: HashMap<String, CocoValue>  
 }
 
 impl Scope {

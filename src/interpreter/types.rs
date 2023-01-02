@@ -102,12 +102,22 @@ impl CocoValue {
                         if val < 0.0 {
                             let rev: Vec<&Box<CocoValue>> = array.into_iter().rev().collect();
 
+                            // FIXME: revisit it
                             return *rev.get(val.abs() as usize).unwrap_or(&&Box::new(CocoValue::CocoNull)).to_owned().to_owned()
                         }
 
                         *array.get(val as usize).unwrap_or(&Box::new(CocoValue::CocoNull)).to_owned()
                     },
                     _ => panic!("Expected number or string")
+                }
+            },
+            CocoValue::CocoObject(map) => {
+                match field {
+                    CocoValue::CocoString(val) => {
+                        *map.get(&val).unwrap_or(&Box::new(CocoValue::CocoNull)).to_owned()
+                    },
+                    // FIXME
+                    _ => panic!("Unknown field")
                 }
             },
             _ => CocoValue::CocoNull,
@@ -132,6 +142,7 @@ impl FieldAccessor {
         match container.clone() {
             CocoValue::CocoString(_val) => container.get_field(last),
             CocoValue::CocoArray(_vals) => container.get_field(last),
+            CocoValue::CocoObject(_vals) => container.get_field(last),
             _ => panic!("Array or string expected")
         }
     }
@@ -140,10 +151,13 @@ impl FieldAccessor {
         let mut container = self.value.clone();
         for i in 0..self.fields.len() - 1 {
             match self.value.clone() {
-                CocoValue::CocoArray(val) => {
+                CocoValue::CocoArray(_val) => {
                     container = self.value.get_field(self.fields.get(i).unwrap().to_owned())
                 },
-                _ => panic!("Array expected"),
+                CocoValue::CocoObject(_val) => {
+                    container = self.value.get_field(self.fields.get(i).unwrap().to_owned())
+                },
+                _ => panic!("Array or object expected"),
             }
         }
 

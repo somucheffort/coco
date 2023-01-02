@@ -58,8 +58,6 @@ pub enum Node {
     Var(String),
     FieldAccess(Box<Node>, Vec<Box<Node>>),
 
-    ExprStatement(Box<Node>),
-
     BlockStatement(Vec<Box<Node>>),
     IfElseStatement(Box<Node>, Box<Node>, Box<Option<Node>>),
     SwitchStatement(Box<Node>, Vec<SwitchCase>),
@@ -188,8 +186,7 @@ impl Parser {
                 let returning = self.expression();
                 Ok(Node::Return(Box::new(returning?)))
             },
-            // FIXME: not working?
-            _ => Ok(Node::ExprStatement(Box::new(self.expression()?)))
+            _ => Ok(self.expression()?)
         }
     }
 

@@ -14,7 +14,18 @@ use interpreter::{ scope::Scope, Interpreter };
 
 fn main() {
     let mut lexer = Lexer::new("
-    let b = log({ a: 1, b: '2' })
+    fun power(a, b) {
+        return a ** b
+    }
+
+    fun sum(a, b) {
+        return a + b
+    }
+
+    let a = 12
+    let b = 3
+
+    log(power(power(a, b), sum(a, b)))
     ");
     lexer.analyse();
 
