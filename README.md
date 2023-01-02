@@ -10,4 +10,4 @@ coco filename.co
 
 # examples
 
-see [/example/](example folder)
+see [example folder](./example)
