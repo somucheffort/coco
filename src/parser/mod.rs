@@ -185,6 +185,7 @@ impl Parser {
                 let returning = self.expression();
                 Ok(Node::Return(Box::new(returning?)))
             },
+            // FIXME: not working?
             _ => Ok(Node::ExprStatement(Box::new(self.expression()?)))
         }
     }
