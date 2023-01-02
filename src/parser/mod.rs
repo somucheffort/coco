@@ -1,38 +1,62 @@
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{ BTreeMap };
 
-use crate::lexer::{Token, TokenType};
+use crate::lexer::{ Token, TokenType };
 use lazy_static::lazy_static;
+use phf::phf_map;
 
 lazy_static! {
     static ref EOF: Token = Token { token_type: TokenType::EOF, text: '\0'.to_string() };
 }
 
+const ASSIGNOP: phf::Map<&str, AssignmentOp> = phf_map! {
+    "=" => AssignmentOp::EQ,
+    "+=" =>  AssignmentOp::PLUSEQ,
+    "-=" =>  AssignmentOp::MINUSEQ,
+    "*=" =>  AssignmentOp::MULEQ,
+    "/=" => AssignmentOp::DIVEQ,
+    "%=" =>  AssignmentOp::REMEQ,
+    "**=" =>  AssignmentOp::EXPEQ,
+};
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub enum AssignmentOp {
+    EQ,      // a = 1
+    PLUSEQ,  // a += 1
+    MINUSEQ, // a -= 1
+    MULEQ,   // a *= 1
+    DIVEQ,   // a /= 1
+    REMEQ,   // a %= 1
+    EXPEQ,   // a **= 1
+    // MINUSMINUS
+    // PLUSPLUS
+}
+
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum LogicalOp {
-    OR,
-    AND,
-    EQ,
-    NOTEQ,
-    GTEQ,
-    GT,
-    LT,
-    LTEQ,
+    OR,    // ||
+    AND,   // &&
+    EQ,    // ==
+    NOTEQ, // !=
+    GTEQ,  // >=
+    GT,    // >
+    LT,    // <
+    LTEQ,  // <=
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum BinaryOp {
-    PLUS,
-    MINUS,
-    MULTIPLY,
-    DIVIDE,
-    REMAINDER,
-    EXPONENT
+    PLUS,      // +
+    MINUS,     // -
+    MULTIPLY,  // *
+    DIVIDE,    // /
+    REMAINDER, // %
+    EXPONENT   // **
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum UnaryOp {
-    MINUS,
-    NOT
+    MINUS, // -a
+    NOT    // !a
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
@@ -44,6 +68,7 @@ pub enum SwitchCase {
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Node {
     Assign(Box<Node>, Box<Node>),
+    AssignOp(AssignmentOp, Box<Node>, Box<Node>),
 
     String(String),
     Number(f64),
@@ -242,6 +267,12 @@ impl Parser {
     }
 
     pub fn expression(&mut self) -> Result<Node, String> {
+        let assign = self.assignment_expression()?;
+
+        if let Some(a) = assign {
+            return Ok(a)
+        }
+
         self.ternary_expression()
     }
 
@@ -361,15 +392,17 @@ impl Parser {
     pub fn variable_expression(&mut self) -> Result<Node, String> {
         let current = self.get_token(None);
 
+        println!("{:#?}", current);
+
         match current.token_type {
             TokenType::WORD => {
                 self.match_token(current.token_type);
                 let name = current.text;
-                return Ok(Node::Var(name))
+                Ok(Node::Var(name))
             }
             _ => {
                 // FIXME: ?
-                panic!("Unknown variable")
+                Err("Unknown variable".to_owned())
             }
         }
     }
@@ -424,6 +457,28 @@ impl Parser {
             }
         }
     }
+
+    pub fn assignment_expression(&mut self) -> Result<Option<Node>, String> {
+        let pre_pos = self.pos;
+        let variable = self.variable_expression();
+        if variable.is_err() {
+            self.pos = pre_pos;
+            return Ok(None);
+        }
+        let field_access = self.field_access_expression(variable.unwrap());
+
+        let current = self.get_token(None);
+
+        if !ASSIGNOP.contains_key(&current.text) {
+            self.pos = pre_pos;
+            return Ok(None);
+        }
+        self.match_token(current.token_type);
+
+        let op = ASSIGNOP.get(&current.text).unwrap();
+
+        Ok(Some(Node::AssignOp(op.to_owned(), Box::new(field_access.unwrap()), Box::new(self.expression()?))))
+    } 
 
     pub fn ternary_expression(&mut self) -> Result<Node, String> {
         let mut result = self.logical_or_expression()?;

@@ -16,18 +16,15 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let mut input = "
-    fun power(a, b) {
-        return a ** b
+    let g = 12
+
+    if (g > 3) {
+        g -= 1
+    } else {
+        log(g)
     }
 
-    fun sum(a, b) {
-        return a + b
-    }
-
-    let a = 12
-    let b = 3
-
-    log(power(power(a, b), sum(a, b)) > a ? 'yes its BIGGER than a' : 'nope :(')
+    log(g > 3)
     ".to_string();
 
     if args.len() > 1 {

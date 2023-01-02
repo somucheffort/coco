@@ -48,6 +48,20 @@ impl Interpreter {
                     }
                 }
             },
+            Node::AssignOp(op, variable, value) => {
+                match *variable {
+                    Node::FieldAccess(_v, _s) => {
+                        //let value = self.walk_tree(*variable, scope)?;
+                        
+                        //Ok(scope.set(name, value))
+
+                        panic!("todo")
+                    },
+                    _ => {
+                        panic!("Unexpected assign")
+                    }
+                }
+            },
             Node::Var(name) => Ok(scope.get(name).to_owned()),
             Node::FieldAccess(variable, indices) => {
                 let value = self.walk_tree(*variable, scope)?;
