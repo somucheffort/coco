@@ -6,6 +6,7 @@ extern crate lazy_static;
 pub mod lexer;
 pub mod parser;
 pub mod interpreter;
+pub mod modules;
 
 use lexer::{ Lexer };
 use parser::{ Parser };
@@ -16,7 +17,9 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let mut input = "
-    
+    import io
+    let b = io.read('input your name: ')
+    log(b)
     ".to_string();
 
     if args.len() > 1 {
@@ -33,7 +36,7 @@ fn main() {
     //println!("{:#?}", parsed);
 
     let mut interpreter = Interpreter::new();
-    let mut scope: Scope = Scope::new(None); 
+    let mut scope: Scope = Scope::new(None);
     let result = interpreter.interpret(parsed, &mut scope);
 
     //println!("{:#?}", result);

@@ -25,7 +25,7 @@ impl Scope {
     }
 
     pub fn get(&self, name: String) -> &CocoValue {
-        self.variables.get(&name).unwrap()
+        self.variables.get(&name).unwrap_or(&CocoValue::CocoNull)
     }
 
     pub fn set(&mut self, name: String, value: CocoValue) -> CocoValue {

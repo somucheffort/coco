@@ -67,7 +67,8 @@ pub enum SwitchCase {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Node {
-    Import(String),
+    Import(Vec<String>),
+    ImportFrom(String, Vec<String>),
 
     Assign(Box<Node>, Box<Node>),
     AssignOp(AssignmentOp, Box<Node>, Box<Node>),
@@ -213,9 +214,18 @@ impl Parser {
             },
             TokenType::IMPORT => {
                 self.match_token(TokenType::IMPORT);
-                let lib = self.consume_token(TokenType::WORD)?.text;
+                let mut libs = vec![];
+                while let Ok(name) = self.consume_token(TokenType::WORD) {
+                    libs.push(name.text);
+                    self.match_token(TokenType::COMMA);
+                }
 
-                Ok(Node::Import(lib))
+                if self.match_token(TokenType::FROM).is_ok() {
+                    let lib_name = self.consume_token(TokenType::WORD)?.text;
+                    return Ok(Node::ImportFrom(lib_name, libs))
+                }
+
+                Ok(Node::Import(libs))
             },
             _ => Ok(self.expression()?)
         }

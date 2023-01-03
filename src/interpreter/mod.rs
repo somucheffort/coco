@@ -1,7 +1,7 @@
 use core::panic;
 use std::{env::Args, collections::BTreeMap};
 
-use crate::parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp, AssignmentOp };
+use crate::{parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp, AssignmentOp }, modules::import_module};
 
 pub mod scope;
 pub mod types;
@@ -21,6 +21,16 @@ impl Interpreter {
 
     pub fn walk_tree(&mut self, node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
         match node {
+            Node::Import(modules) => {
+                for module in modules.iter() {   
+                    import_module(module.as_str(), scope, None);
+                }
+                Ok(CocoValue::CocoNull)
+            },
+            Node::ImportFrom(module, objects) => {
+                import_module(module.as_str(), scope, Some(objects));
+                Ok(CocoValue::CocoNull)
+            },
             Node::BlockStatement(statements) => {
                 let mut result = CocoValue::CocoNull;
                 for statement in statements {
