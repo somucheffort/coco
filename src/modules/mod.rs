@@ -1,4 +1,4 @@
-use crate::interpreter::scope::Scope;
+use crate::{interpreter::{scope::Scope}};
 
 use self::{io::IOModule, math::MathModule};
 
@@ -14,6 +14,9 @@ pub fn import_module(module: &str, scope: &mut Scope, objects: Option<Vec<String
     match module {
         "io" => IOModule::init(scope, objects),
         "math" => MathModule::init(scope, objects),
-        _ => panic!("Unknown module")
+        _ => {
+            // FIXME
+            panic!("Unknown module: {}", module);
+        }
     }
 }
