@@ -31,4 +31,8 @@ impl Scope {
     pub fn set(&mut self, name: String, value: CocoValue) -> CocoValue {
         self.variables.insert(name, value).unwrap_or(CocoValue::CocoNull)
     }
+
+    pub fn is_present(&self, name: String) -> bool {
+        self.variables.contains_key(&name)
+    }
 }

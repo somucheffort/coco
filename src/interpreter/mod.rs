@@ -1,7 +1,7 @@
 use core::panic;
 use std::{env::Args, collections::BTreeMap};
 
-use crate::parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp };
+use crate::parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp, AssignmentOp };
 
 pub mod scope;
 pub mod types;
@@ -48,19 +48,46 @@ impl Interpreter {
                     }
                 }
             },
-            Node::AssignOp(op, variable, value) => {
-                match *variable {
-                    Node::FieldAccess(_v, _s) => {
-                        //let value = self.walk_tree(*variable, scope)?;
-                        
-                        //Ok(scope.set(name, value))
-
-                        panic!("todo")
+            Node::AssignOp(op, variable_node, value_node) => {
+                let mut initial_value = self.walk_tree(*variable_node.clone(), scope)?;
+                let set_value = self.walk_tree(*value_node, scope)?;
+                match op {
+                    AssignmentOp::EQ => {
+                        initial_value = set_value;
                     },
-                    _ => {
-                        panic!("Unexpected assign")
+                    AssignmentOp::MINUSEQ => {
+                        initial_value = CocoValue::CocoNumber(initial_value.as_number() - set_value.as_number());
+                    },
+                    AssignmentOp::PLUSEQ => {
+                        initial_value = CocoValue::CocoNumber(initial_value.as_number() + set_value.as_number());
+                    },
+                    AssignmentOp::MULEQ => {
+                        initial_value = CocoValue::CocoNumber(initial_value.as_number() * set_value.as_number());
+                    },
+                    AssignmentOp::DIVEQ => {
+                        initial_value = CocoValue::CocoNumber(initial_value.as_number() / set_value.as_number());
+                    },
+                    AssignmentOp::REMEQ => {
+                        initial_value = CocoValue::CocoNumber(initial_value.as_number() % set_value.as_number());
+                    },
+                    AssignmentOp::EXPEQ => {
+                        initial_value = CocoValue::CocoNumber(initial_value.as_number().powf(set_value.as_number()));
                     }
                 }
+
+                if let Node::Var(name) = *variable_node.clone() {
+                   scope.set(name, initial_value.clone());
+                }
+                if let Node::FieldAccess(var, indices) = *variable_node.clone() {
+                    if let Node::Var(name) = *var.clone() {
+                        let var_value = self.walk_tree(*var, scope)?;
+                        let fields = indices.iter().map(|i| self.walk_tree(*i.to_owned(), scope).unwrap_or(CocoValue::CocoNull)).collect::<Vec<CocoValue>>();
+                        let mut field_accessor = FieldAccessor::new(var_value, fields);
+                        scope.set(name, field_accessor.set(initial_value));
+                    }
+                }
+
+                Ok(CocoValue::CocoNull)
             },
             Node::Var(name) => Ok(scope.get(name).to_owned()),
             Node::FieldAccess(variable, indices) => {

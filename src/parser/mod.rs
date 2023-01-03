@@ -67,6 +67,8 @@ pub enum SwitchCase {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Node {
+    Import(String),
+
     Assign(Box<Node>, Box<Node>),
     AssignOp(AssignmentOp, Box<Node>, Box<Node>),
 
@@ -208,6 +210,12 @@ impl Parser {
                 self.match_token(TokenType::RETURN);
                 let returning = self.expression();
                 Ok(Node::Return(Box::new(returning?)))
+            },
+            TokenType::IMPORT => {
+                self.match_token(TokenType::IMPORT);
+                let lib = self.consume_token(TokenType::WORD)?.text;
+
+                Ok(Node::Import(lib))
             },
             _ => Ok(self.expression()?)
         }

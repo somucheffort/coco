@@ -100,7 +100,7 @@ impl CocoValue {
                     CocoValue::CocoNumber(val) => {
                         // FIXME
                         if val < 0.0 {
-                            let rev: Vec<&Box<CocoValue>> = array.into_iter().rev().collect();
+                            let rev: Vec<&Box<CocoValue>> = array.iter().rev().collect();
 
                             // FIXME: revisit it
                             return *rev.get(val.abs() as usize).unwrap_or(&&Box::new(CocoValue::CocoNull)).to_owned().to_owned()
@@ -123,8 +123,48 @@ impl CocoValue {
             _ => CocoValue::CocoNull,
         }
     }
+
+    pub fn set_field(&mut self, field: CocoValue, value: CocoValue) -> CocoValue {
+        match self {
+            CocoValue::CocoArray(array) => {
+                match field {
+                    CocoValue::CocoNumber(val) => {
+                        // FIXME 
+                        /*
+                        if val < 0.0 {
+                            let rev: Vec<&Box<CocoValue>> = array.into_iter().rev().collect();
+
+                            // FIXME: revisit it
+                            return *rev.get(val.abs() as usize).unwrap_or(&&Box::new(CocoValue::CocoNull)).to_owned().to_owned()
+                        }*/
+
+                        *array[val as usize] = value;
+
+                        CocoValue::CocoArray(array.to_vec())
+                    },
+                    _ => panic!("Expected number")
+                }
+            },
+            CocoValue::CocoObject(map) => {
+                match field {
+                    CocoValue::CocoString(val) => {
+                        let mut new_map = map.to_owned();
+                        new_map.insert(val, Box::new(value));
+
+                        CocoValue::CocoObject(new_map)
+                    },
+                    // FIXME
+                    _ => panic!("Unknown field")
+                }
+            },
+
+            // FIXME
+            _ => panic!("Cannot set field to this value")
+        }
+    }
 }
 
+#[derive(Debug)]
 pub struct FieldAccessor {
     value: CocoValue,
     fields: Vec<CocoValue>
@@ -143,7 +183,18 @@ impl FieldAccessor {
             CocoValue::CocoString(_val) => container.get_field(last),
             CocoValue::CocoArray(_vals) => container.get_field(last),
             CocoValue::CocoObject(_vals) => container.get_field(last),
-            _ => panic!("Array or string expected")
+            _ => panic!("Array, string or object expected")
+        }
+    }
+
+    pub fn set(&mut self, value: CocoValue) -> CocoValue {
+        let mut container = self.get_container();
+        let last = self.last();
+
+        match container.clone() {
+            CocoValue::CocoArray(_vals) => container.set_field(last, value),
+            CocoValue::CocoObject(_vals) => container.set_field(last, value),
+            _ => panic!("Array or object expected")
         }
     }
 
@@ -182,7 +233,7 @@ impl std::fmt::Display for CocoValue {
             CocoValue::CocoBoolean(_val) => write!(f, "{}", &self.as_string().blue()),
             CocoValue::CocoArray(values) => write!(f, "[ {} ]", values.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(", ")),
             CocoValue::CocoFunction(_s, _n) => write!(f, "{:#?} {:#?}", _s, _n),
-            CocoValue::CocoObject(map) => write!(f, "{{ {}}}", &self.as_string()),
+            CocoValue::CocoObject(map) => write!(f, "{{ {} }}", &self.as_string()),
             CocoValue::CocoNull => write!(f, "{}", "null".bold())
         }
     }

@@ -16,19 +16,11 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let mut input = "
-    let g = 12
-
-    if (g > 3) {
-        g -= 1
-    } else {
-        log(g)
-    }
-
-    log(g > 3)
+    
     ".to_string();
 
     if args.len() > 1 {
-        input = fs::read_to_string(&args[1]).unwrap_or(input.to_string());
+        input = fs::read_to_string(&args[1]).unwrap_or_else(|_| input.to_string());
     }
 
     let mut lexer = Lexer::new(&input);
@@ -37,6 +29,8 @@ fn main() {
 
     let mut parser = Parser::new(lexer.tokens);
     let parsed = parser.parse().unwrap();
+
+    //println!("{:#?}", parsed);
 
     let mut interpreter = Interpreter::new();
     let mut scope: Scope = Scope::new(None); 

@@ -27,7 +27,8 @@ const KEYWORDS: phf::Map<&str, TokenType> = phf_map! {
     "typeof" => TokenType::TYPEOF,
     "class" =>  TokenType::CLASS,
     "new" =>  TokenType::NEW,
-    "this" =>  TokenType::THIS
+    "this" =>  TokenType::THIS,
+    "import" => TokenType::IMPORT
 };
 
 const OPERATORS: phf::Map<&str, TokenType> = phf_map! {
@@ -92,6 +93,7 @@ pub enum TokenType {
     CLASS, // class
     NEW, // new
     THIS, // this
+    IMPORT, // import
     
     NULL, // null
     NUMBER, // 0
