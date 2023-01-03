@@ -245,12 +245,11 @@ impl Interpreter {
                 }
             },
             Node::Fun(variable, args, block) => {
-                match *variable {
-                    Node::Var(name) => Ok(scope.set(name, CocoValue::CocoFunction(args, Fun::Node(*block)))),
-                    _ => {
-                        panic!("Unexpected assign")
-                    }
+                if let Node::Var(name) = *variable {
+                    return Ok(scope.set(name, CocoValue::CocoFunction(args, Fun::Node(*block))))
                 }
+
+                Ok(CocoValue::CocoNull)
             },
             Node::FunCall(variable, args) => {
                 let value = self.walk_tree(*variable, scope)?;
