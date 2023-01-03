@@ -134,7 +134,7 @@ impl CocoValue {
                             let rev: Vec<&Box<CocoValue>> = array.iter().rev().collect();
 
                             // FIXME: revisit it
-                            return *rev.get(val.abs() as usize).unwrap_or(&&Box::new(CocoValue::CocoNull)).to_owned().to_owned()
+                            return *rev.get(val.abs() as usize - 1).unwrap_or(&&Box::new(CocoValue::CocoNull)).to_owned().to_owned()
                         }
 
                         *array.get(val as usize).unwrap_or(&Box::new(CocoValue::CocoNull)).to_owned()
