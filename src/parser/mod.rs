@@ -213,6 +213,7 @@ impl Parser {
                 Ok(Node::Return(Box::new(returning?)))
             },
             TokenType::IMPORT => {
+                // FIXME
                 self.match_token(TokenType::IMPORT);
                 let mut libs = vec![];
                 while let Ok(name) = self.consume_token(TokenType::WORD) {
