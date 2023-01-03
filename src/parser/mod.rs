@@ -216,9 +216,11 @@ impl Parser {
                 // FIXME
                 self.match_token(TokenType::IMPORT);
                 let mut libs = vec![];
-                while let Ok(name) = self.consume_token(TokenType::WORD) {
-                    libs.push(name.text);
-                    self.match_token(TokenType::COMMA);
+                while self.get_token(None).token_type == TokenType::WORD {
+                    libs.push(self.consume_token(TokenType::WORD)?.text);
+                    if let Err(_b) = self.consume_token(TokenType::COMMA) {
+                        break
+                    }
                 }
 
                 if self.match_token(TokenType::FROM).is_ok() {
@@ -307,7 +309,8 @@ impl Parser {
             TokenType::BOOLEAN |
             TokenType::LBRACKET |
             TokenType::LBRACE |
-            TokenType::NULL => {
+            TokenType::NULL |
+            TokenType::NAN => {
                 let var_val = self.var_val_expression()?;
                 let field_access = self.field_access_expression(var_val)?;
 
@@ -411,8 +414,6 @@ impl Parser {
     pub fn variable_expression(&mut self) -> Result<Node, String> {
         let current = self.get_token(None);
 
-        println!("{:#?}", current);
-
         match current.token_type {
             TokenType::WORD => {
                 self.match_token(current.token_type);
@@ -447,6 +448,10 @@ impl Parser {
             TokenType::NULL => {
                 self.match_token(current.token_type);
                 return Ok(Node::Null)
+            },
+            TokenType::NAN => {
+                self.match_token(current.token_type);
+                return Ok(Node::Number(f64::NAN))
             },
             TokenType::LBRACKET => {
                 self.match_token(TokenType::LBRACKET);
@@ -640,7 +645,7 @@ impl Parser {
     pub fn consume_token(&mut self, token_type: TokenType) -> Result<Token, String> {
         let current = self.get_token(None);
         if current.token_type != token_type {
-            panic!("Token {:#?} didnt match {:#?}", token_type, current.token_type);
+            return Err(format!("Token {:#?} didnt match {:#?}", token_type, current.token_type));
         }
 
         self.pos += 1;

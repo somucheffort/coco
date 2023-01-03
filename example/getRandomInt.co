@@ -1,0 +1,9 @@
+import math
+
+fun getRandomInt(min, max) {
+    min = math.ceil(min)
+    max = math.floor(max)
+    return math.floor(math.random() * (max - min + 1)) + min
+}
+
+log(getRandomInt(1, 100))

@@ -6,7 +6,7 @@ use crate::{parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp, Assignment
 pub mod scope;
 pub mod types;
 
-use self::{scope::Scope, types::{CocoValue, FieldAccessor, Fun}};
+use self::{scope::Scope, types::{CocoValue, FieldAccessor, Fun, create_string}};
 
 pub struct Interpreter {}
 
@@ -106,7 +106,7 @@ impl Interpreter {
                 let field_accessor = FieldAccessor::new(value, fields);
                 Ok(field_accessor.get())
             },
-            Node::String(value) => Ok(CocoValue::CocoString(value)),
+            Node::String(value) => Ok(create_string(value, scope)),
             Node::Number(value) => Ok(CocoValue::CocoNumber(value)),
             Node::Bool(value) => Ok(CocoValue::CocoBoolean(value)),
             Node::Array(value) => {
@@ -277,7 +277,9 @@ impl Interpreter {
                         }
                         
                     },
-                    _ => panic!("FIXME")
+                    _ => {
+                        Err("Unknown function".to_string())
+                    }
                 }
             },
             Node::SwitchStatement(variable, switch_cases) => {

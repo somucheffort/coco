@@ -17,9 +17,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let mut input = "
-    import io
-    let b = io.read('input your name: ')
-    log(b)
+    log(number('1'))
     ".to_string();
 
     if args.len() > 1 {

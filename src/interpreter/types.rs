@@ -1,8 +1,12 @@
 use std::collections::BTreeMap;
 
 use colored::Colorize;
+use lazy_static::lazy_static;
+use regex::Regex;
 
 use crate::parser::Node;
+
+use super::scope::Scope;
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Fun {
@@ -21,6 +25,21 @@ pub enum CocoValue {
     CocoFunction(Vec<String>, Fun),
     // CocoClass
     CocoNull
+}
+
+pub fn create_string(s: String, scope: &mut Scope) -> CocoValue {
+    lazy_static! {
+        static ref VAR_REGEX: Regex = Regex::new(r"\$([a-zA-Z][0-9a-zA-Z_]*)").unwrap();
+    }
+
+    let mut new_string = s;
+
+    let values = VAR_REGEX.find_iter(new_string.as_str()).map(|s| s.as_str().to_string()).collect::<Vec<String>>();
+    for value in values.iter() {
+        new_string = new_string.replace(value, &scope.get(value.to_string().replace('$', "")).as_string());
+    }
+
+    CocoValue::CocoString(new_string)
 }
 
 impl CocoValue {
@@ -114,7 +133,7 @@ impl CocoValue {
             CocoValue::CocoObject(map) => {
                 match field {
                     CocoValue::CocoString(val) => {
-                        *map.get(&val).unwrap_or(&Box::new(CocoValue::CocoNull)).to_owned()
+                        *map.to_owned().get(&val).unwrap_or(&Box::new(CocoValue::CocoNull)).to_owned()
                     },
                     // FIXME
                     _ => panic!("Unknown field")
@@ -233,7 +252,7 @@ impl std::fmt::Display for CocoValue {
             CocoValue::CocoBoolean(_val) => write!(f, "{}", &self.as_string().blue()),
             CocoValue::CocoArray(values) => write!(f, "[ {} ]", values.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(", ")),
             CocoValue::CocoFunction(_s, _n) => write!(f, "{:#?} {:#?}", _s, _n),
-            CocoValue::CocoObject(map) => write!(f, "{{ {} }}", &self.as_string()),
+            CocoValue::CocoObject(_map) => write!(f, "{{ {} }}", &self.as_string()),
             CocoValue::CocoNull => write!(f, "{}", "null".bold())
         }
     }

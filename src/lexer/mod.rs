@@ -29,7 +29,8 @@ const KEYWORDS: phf::Map<&str, TokenType> = phf_map! {
     "new" =>  TokenType::NEW,
     "this" =>  TokenType::THIS,
     "import" => TokenType::IMPORT,
-    "from" => TokenType::FROM
+    "from" => TokenType::FROM,
+    "NaN" => TokenType::NAN
 };
 
 const OPERATORS: phf::Map<&str, TokenType> = phf_map! {
@@ -102,6 +103,7 @@ pub enum TokenType {
     STRING, // '0'
     WORD, // bones
     BOOLEAN, // true, false
+    NAN, // NaN
 
     EQUALS, // =
     PLUS, // +
