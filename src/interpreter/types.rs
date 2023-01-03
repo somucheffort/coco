@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, cmp::Ordering};
 
 use colored::Colorize;
 use lazy_static::lazy_static;
@@ -79,6 +79,18 @@ impl CocoValue {
             .map(|x| format!("{}: {}", x.0, x.1.as_string()))
             .collect::<Vec<_>>().join(", "),
             CocoValue::CocoNull => "null".to_owned()
+        }
+    }
+
+    pub fn compare(&self, value: CocoValue) -> Ordering {
+        match self {
+            CocoValue::CocoString(val) => val.cmp(&value.as_string()),
+            CocoValue::CocoNumber(val) => val.total_cmp(&value.as_number()),
+            CocoValue::CocoBoolean(val) => val.cmp(&value.as_bool()),
+            CocoValue::CocoArray(_values) => self.partial_cmp(&value).unwrap(),
+            CocoValue::CocoFunction(_s, _n) => self.partial_cmp(&value).unwrap(),
+            CocoValue::CocoObject(_map) => self.partial_cmp(&value).unwrap(),
+            CocoValue::CocoNull => self.partial_cmp(&value).unwrap()
         }
     }
 

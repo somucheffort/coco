@@ -1,5 +1,5 @@
 use core::panic;
-use std::{env::Args, collections::BTreeMap};
+use std::{env::Args, collections::BTreeMap, cmp::Ordering};
 
 use crate::{parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp, AssignmentOp }, modules::import_module};
 
@@ -138,16 +138,18 @@ impl Interpreter {
             Node::Logical(operator, node1, node2) => {
                 let val1 = self.walk_tree(*node1, scope);
                 let val2 = self.walk_tree(*node2, scope);
+
+                let ord = val1.clone()?.compare(val2.clone()?);
                 
                 match operator {
                     LogicalOp::AND => Ok(CocoValue::CocoBoolean(val1?.as_bool() && val2?.as_bool())),
-                    LogicalOp::OR => Ok(CocoValue::CocoBoolean(val1?.as_bool() && val2?.as_bool())),
-                    LogicalOp::EQ => Ok(CocoValue::CocoBoolean(val1? == val2?)),
-                    LogicalOp::NOTEQ => Ok(CocoValue::CocoBoolean(val1? != val2?)),
-                    LogicalOp::GT => Ok(CocoValue::CocoBoolean(val1? > val2?)),
-                    LogicalOp::GTEQ => Ok(CocoValue::CocoBoolean(val1? >= val2?)),
-                    LogicalOp::LT => Ok(CocoValue::CocoBoolean(val1? < val2?)),
-                    LogicalOp::LTEQ => Ok(CocoValue::CocoBoolean(val1? <= val2?))
+                    LogicalOp::OR => Ok(CocoValue::CocoBoolean(val1?.as_bool() || val2?.as_bool())),
+                    LogicalOp::EQ => Ok(CocoValue::CocoBoolean(ord.is_eq())),
+                    LogicalOp::NOTEQ => Ok(CocoValue::CocoBoolean(ord.is_ne())),
+                    LogicalOp::GT => Ok(CocoValue::CocoBoolean(ord == Ordering::Greater)),
+                    LogicalOp::GTEQ => Ok(CocoValue::CocoBoolean(ord == Ordering::Greater || ord == Ordering::Equal)),
+                    LogicalOp::LT => Ok(CocoValue::CocoBoolean(ord == Ordering::Less)),
+                    LogicalOp::LTEQ => Ok(CocoValue::CocoBoolean(ord == Ordering::Less || ord == Ordering::Equal))
                 }
             },
             Node::Binary(operator, node1, node2) => {

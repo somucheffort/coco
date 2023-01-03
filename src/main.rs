@@ -28,10 +28,10 @@ fn main() {
 
     lexer.analyse();
 
+    //println!("{:#?}", lexer);
+
     let mut parser = Parser::new(lexer.tokens);
     let parsed = parser.parse().unwrap();
-
-    //println!("{:#?}", parsed);
 
     let mut interpreter = Interpreter::new();
     let mut scope: Scope = Scope::new(None);

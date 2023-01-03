@@ -3,8 +3,6 @@ import read from io
 let name = read('Hi! Input your name:')
 let age = number(read('And, input your age:'))
 
-log(age, NaN)
-
 age = age == NaN ? '...huh?' : age
 
 log('Your name is $name, and your age is $age')

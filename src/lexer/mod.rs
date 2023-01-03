@@ -172,7 +172,7 @@ impl Lexer {
             let current = self.peek(None);
             let mut result = None;
 
-            if OPERATORS.keys().find(|&&key| current.to_string().contains(key)).is_some() {
+            if OPERATORS.keys().any(|&key| key.contains(current)) {
                 result = Some(self.parse_operator());
             } else if DIGITS.contains(current) {
                 result = Some(self.parse_number());
@@ -184,10 +184,8 @@ impl Lexer {
                 self.next();
             }
 
-            if result.is_some() {
-                if result.to_owned().unwrap().is_err() {
-                    panic!("{:#?}", result.unwrap().err())
-                }
+            if result.is_some() && result.to_owned().unwrap().is_err() {
+                panic!("{:#?}", result.unwrap().err())
             }
         }
 
