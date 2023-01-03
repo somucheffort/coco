@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, io::{ self, Write }};
+use std::{collections::BTreeMap};
 use rand::{ thread_rng, Rng };
 
 use crate::interpreter::{scope::Scope, types::{CocoValue, Fun, FieldAccessor}};
@@ -67,7 +67,7 @@ fn get_round() -> CocoValue {
 }
 
 fn get_random() -> CocoValue {
-    CocoValue::CocoFunction(Vec::from([]), Fun::Builtin(|args| {
+    CocoValue::CocoFunction(Vec::from([]), Fun::Builtin(|_| {
         let mut rng = thread_rng();
         CocoValue::CocoNumber(rng.gen())
     }))

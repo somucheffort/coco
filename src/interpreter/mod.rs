@@ -1,5 +1,5 @@
 use core::panic;
-use std::{env::Args, collections::BTreeMap, cmp::Ordering};
+use std::{collections::BTreeMap, cmp::Ordering};
 
 use crate::{parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp, AssignmentOp }, modules::import_module};
 

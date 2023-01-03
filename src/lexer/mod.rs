@@ -1,4 +1,3 @@
-use std::{io::Error, io::ErrorKind};
 use phf::{ phf_map };
 
 const QUOTES: &str = "\'\"";
@@ -181,7 +180,7 @@ impl Lexer {
             } else if QUOTES.contains(current) {
                 result = Some(self.parse_string());
             } else  {
-                self.next();
+                self.next_char();
             }
 
             if result.is_some() && result.to_owned().unwrap().is_err() {
@@ -202,11 +201,11 @@ impl Lexer {
             } else if current_buff == "/*" {
                 return self.parse_comment(Some(true));
             }
-            if OPERATORS.keys().find(|&&key| key.starts_with(current_buff.as_str())).is_none() {
+            if !OPERATORS.keys().any(|&key| key.starts_with(current_buff.as_str())) {
                 break
             }
             buffer.push(current);
-            current = self.next();
+            current = self.next_char();
         }
 
         self.add_token(OPERATORS.get(buffer.as_str()).unwrap().to_owned(), buffer.as_str());
@@ -225,7 +224,7 @@ impl Lexer {
                 break
             }
             buffer.push(current);
-            current = self.next();
+            current = self.next_char();
         }
 
         self.add_token(TokenType::NUMBER, buffer.as_str());
@@ -236,7 +235,7 @@ impl Lexer {
     pub fn parse_string(&mut self) -> Result<bool, String> {
         let mut buffer: String = "".to_owned();
         let quote = self.peek(None);
-        let mut current = self.next();
+        let mut current = self.next_char();
 
         loop {
             if current == '\0' {
@@ -246,10 +245,10 @@ impl Lexer {
                 break;
             }
             buffer.push(current);
-            current = self.next();
+            current = self.next_char();
         }
 
-        self.next();
+        self.next_char();
         self.add_token(TokenType::STRING, buffer.as_str());
 
         Ok(true)
@@ -263,7 +262,7 @@ impl Lexer {
                 break
             }
             buffer.push(current);
-            current = self.next();
+            current = self.next_char();
         }
 
         if KEYWORDS.contains_key(buffer.as_str()) {
@@ -272,7 +271,7 @@ impl Lexer {
         }
 
         self.add_token(TokenType::WORD, buffer.as_str());
-        return Ok(true)
+        Ok(true)
     }
 
     pub fn parse_comment(&mut self, multiline: Option<bool>) -> Result<bool, String> {
@@ -285,14 +284,14 @@ impl Lexer {
                 if current == '\0' {
                     return Err("Multiline comment did not close".to_string())
                 }
-                self.next();
+                self.next_char();
             }
-            self.next();
-            self.next();
+            self.next_char();
+            self.next_char();
         }
 
         while "\r\n\0".to_string().contains(self.peek(None)) {
-            self.next();
+            self.next_char();
         }
 
         Ok(true)
@@ -307,7 +306,7 @@ impl Lexer {
         self.code.chars().nth(current).unwrap()
     }
 
-    pub fn next(&mut self) -> char {
+    pub fn next_char(&mut self) -> char {
         self.pos += 1;
         self.peek(None)
     }
