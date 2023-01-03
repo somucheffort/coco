@@ -1,4 +1,4 @@
-import math
+import 'math'
 
 fun getRandomInt(min, max) {
     min = math.ceil(min)

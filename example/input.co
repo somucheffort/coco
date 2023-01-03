@@ -1,4 +1,4 @@
-import read from io
+import read from 'io'
 
 let name = read('Hi! Input your name:')
 let age = number(read('And, input your age:'))

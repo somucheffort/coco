@@ -21,10 +21,8 @@ impl Interpreter {
 
     pub fn walk_tree(&mut self, node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
         match node {
-            Node::Import(modules) => {
-                for module in modules.iter() {   
-                    import_module(module.as_str(), scope, None);
-                }
+            Node::Import(module) => {
+                import_module(module.as_str(), scope, None);
                 Ok(CocoValue::CocoNull)
             },
             Node::ImportFrom(module, objects) => {
