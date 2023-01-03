@@ -41,7 +41,10 @@ fn get_stdin() -> CocoValue {
 fn get_read() -> CocoValue {
     CocoValue::CocoFunction(vec![], Fun::Builtin(|args| {
         for val in args.iter() {
-            print!("{} ", val)
+            match val {
+                CocoValue::CocoString(s) => print!("{} ", s),
+                _ => print!("{} ", val)
+            }
         }
         let _ = io::stdout().flush();
         let mut buffer = String::new();
@@ -63,7 +66,10 @@ fn get_stdout() -> CocoValue {
 pub fn get_write() -> CocoValue {
     CocoValue::CocoFunction(vec![], Fun::Builtin(|args| {
         for val in args.iter() {
-            print!("{} ", val)
+            match val {
+                CocoValue::CocoString(s) => print!("{} ", s),
+                _ => print!("{} ", val)
+            }
         }
         println!();
         CocoValue::CocoNull
