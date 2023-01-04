@@ -1,0 +1,8 @@
+import read from 'io'
+
+log('Hello! I am converter and I want to convert your values')
+let n = num(read('1. Number convertion:'))
+let b = bool(read('2. Boolean convertion:'))
+let s = str(read('3. String convertion:'))
+
+log('Here is your values:', [ n, b, s ])
