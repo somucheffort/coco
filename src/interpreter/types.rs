@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, cmp::Ordering};
+use std::{collections::{BTreeMap, HashMap}, cmp::Ordering};
 
 use colored::Colorize;
 use lazy_static::lazy_static;
@@ -9,9 +9,62 @@ use crate::parser::Node;
 use super::scope::Scope;
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub enum Fun {
-    Node(Node),
-    Builtin(fn(Vec<CocoValue>) -> CocoValue)
+pub enum FuncImpl {
+    FromNode(Node),
+    Builtin(fn(HashMap<String, CocoValue>) -> CocoValue)
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub enum FuncArg {
+    Required(String),
+    NotRequired(String, CocoValue),
+    Spread(String)
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub struct FuncArgs {
+    args: Vec<FuncArg>
+}
+
+impl FuncArgs {
+    pub fn new(args: Vec<FuncArg>) -> Self { 
+        Self {
+            args
+        }
+    }
+
+    pub fn add_argument(&mut self, arg: FuncArg) {
+        self.args.push(arg)
+    }
+
+    pub fn reduce(&mut self, args_eval: &mut Vec<CocoValue>) -> HashMap<String, CocoValue> {
+        args_eval.reverse();
+        self.args.clone().into_iter().fold(HashMap::default(), | mut acc, value | {
+            match value {
+                FuncArg::Required(name) => {
+                    acc.insert(name, args_eval.pop().unwrap());
+                    acc
+                },
+                FuncArg::NotRequired(name, value) => {
+                    let current_val = args_eval.pop();
+                    acc.insert(name, current_val.unwrap_or(value));
+                    acc
+                },
+                FuncArg::Spread(name) => {
+                    let mut spreaded = args_eval.clone();
+                    spreaded.reverse();
+                    acc.insert(name, CocoValue::CocoArray(
+                        spreaded.iter().map(|v| Box::new(v.to_owned())).collect::<Vec<Box<CocoValue>>>()
+                    ));
+                    acc
+                }
+            }
+        })
+    }
+
+    pub fn get_arguments(&self) -> Vec<FuncArg> {
+        self.args.clone()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
@@ -22,7 +75,7 @@ pub enum CocoValue {
     CocoArray(Vec<Box<CocoValue>>),
     CocoObject(BTreeMap<String, Box<CocoValue>>),
     // FIXME: args
-    CocoFunction(Vec<String>, Fun),
+    CocoFunction(FuncArgs, FuncImpl),
     // CocoClass
     CocoNull
 }

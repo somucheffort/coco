@@ -2,7 +2,7 @@ use std::{collections::HashMap};
 
 use crate::modules::io;
 
-use super::types::{CocoValue, Fun};
+use super::types::{CocoValue, FuncImpl, FuncArgs, FuncArg};
 
 #[derive(Clone, Debug)]
 pub struct Scope {
@@ -16,9 +16,13 @@ impl Scope {
             previous,
             variables: HashMap::from([
                 ("log".to_owned(), io::get_write()),
-                ("number".to_owned(), CocoValue::CocoFunction(Vec::from(["any".to_owned()]), Fun::Builtin(|vals| {
-                    CocoValue::CocoNumber(vals[0].as_number())
-                })))
+                ("number".to_owned(), CocoValue::CocoFunction(
+                    FuncArgs::new(Vec::from([FuncArg::Required("any".to_string())])), 
+                    FuncImpl::Builtin(|vals| {
+                        CocoValue::CocoNumber(vals.into_values().collect::<Vec<CocoValue>>()[0].as_number())
+                    })
+                )),
+                
             ])
         }
     }

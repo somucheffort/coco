@@ -1,6 +1,6 @@
 use std::collections::{ BTreeMap };
 
-use crate::lexer::{ Token, TokenType };
+use crate::{lexer::{ Token, TokenType }, interpreter::types::{FuncArgs, FuncArg}};
 use lazy_static::lazy_static;
 use phf::phf_map;
 
@@ -92,7 +92,7 @@ pub enum Node {
     // FIXME: args
     FunCall(Box<Node>, Vec<Box<Node>>),
     Return(Box<Node>),
-    Fun(Box<Node>, Vec<String>, Box<Node>),
+    Fun(Box<Node>, FuncArgs, Box<Node>),
     Logical(LogicalOp, Box<Node>, Box<Node>),
     Binary(BinaryOp, Box<Node>, Box<Node>),
     Unary(UnaryOp, Box<Node>),
@@ -166,10 +166,10 @@ impl Parser {
                 self.match_token(TokenType::FUN);
                 let name = self.consume_token(TokenType::WORD);
                 self.consume_token(TokenType::LPAR);
-                let mut args: Vec<String> = vec![];
+                let mut args: FuncArgs = FuncArgs::new(vec![]);
                 while let Err(_b) = self.match_token(TokenType::RPAR) {
                     let arg = self.consume_token(TokenType::WORD);
-                    args.push(arg?.text);
+                    args.add_argument(FuncArg::Required(arg?.text));
                     self.match_token(TokenType::COMMA);
                 }
                 let block = self.block();

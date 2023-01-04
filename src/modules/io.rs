@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, io::{ self, Write }};
 
-use crate::interpreter::{scope::Scope, types::{CocoValue, Fun, FieldAccessor}};
+use crate::interpreter::{scope::Scope, types::{CocoValue, FuncImpl, FieldAccessor, FuncArgs, FuncArg}};
 
 use super::CocoModule;
 
@@ -39,20 +39,25 @@ fn get_stdin() -> CocoValue {
 }
 
 fn get_read() -> CocoValue {
-    CocoValue::CocoFunction(vec![], Fun::Builtin(|args| {
-        for val in args.iter() {
-            match val {
-                CocoValue::CocoString(s) => print!("{} ", s),
-                _ => print!("{} ", val)
+    CocoValue::CocoFunction(
+        FuncArgs::new(Vec::from([FuncArg::Spread("vals".to_string())])), 
+        FuncImpl::Builtin(|args| {
+            if let CocoValue::CocoArray(vals) = args.get("vals").unwrap() {
+                for val in vals {
+                    match *val.to_owned() {
+                        CocoValue::CocoString(s) => print!("{} ", s),
+                        _ => print!("{} ", val)
+                    }
+                }
             }
-        }
-        let _ = io::stdout().flush();
-        let mut buffer = String::new();
-        if let Ok(_b) = io::stdin().read_line(&mut buffer) {   
-            return CocoValue::CocoString(buffer.trim_end().to_string())
-        }
-        CocoValue::CocoNull
-    }))
+            let _ = io::stdout().flush();
+            let mut buffer = String::new();
+            if let Ok(_b) = io::stdin().read_line(&mut buffer) {   
+                return CocoValue::CocoString(buffer.trim_end().to_string())
+            }
+            CocoValue::CocoNull
+        })
+    )
 }
 
 fn get_stdout() -> CocoValue {
@@ -64,14 +69,20 @@ fn get_stdout() -> CocoValue {
 }
 
 pub fn get_write() -> CocoValue {
-    CocoValue::CocoFunction(vec![], Fun::Builtin(|args| {
-        for val in args.iter() {
-            match val {
-                CocoValue::CocoString(s) => print!("{} ", s),
-                _ => print!("{} ", val)
+    CocoValue::CocoFunction(
+        FuncArgs::new(Vec::from([FuncArg::Spread("vals".to_string())])), 
+        FuncImpl::Builtin(|args| {
+            if let CocoValue::CocoArray(vals) = args.get("vals").unwrap() {
+                for val in vals {
+                    match *val.to_owned() {
+                        CocoValue::CocoString(s) => print!("{} ", s),
+                        _ => print!("{} ", val)
+                    }
+                }
+                println!()
             }
+
+            CocoValue::CocoNull
         }
-        println!();
-        CocoValue::CocoNull
-    }))
+    ))
 }

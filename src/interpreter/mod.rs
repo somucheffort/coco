@@ -1,12 +1,12 @@
 use core::panic;
-use std::{collections::BTreeMap, cmp::Ordering};
+use std::{collections::{BTreeMap, HashMap}, cmp::Ordering};
 
 use crate::{parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp, AssignmentOp }, modules::import_module};
 
 pub mod scope;
 pub mod types;
 
-use self::{scope::Scope, types::{CocoValue, FieldAccessor, Fun, create_string}};
+use self::{scope::Scope, types::{CocoValue, FieldAccessor, FuncImpl, create_string, FuncArg}};
 
 pub struct Interpreter {}
 
@@ -246,32 +246,33 @@ impl Interpreter {
             },
             Node::Fun(variable, args, block) => {
                 if let Node::Var(name) = *variable {
-                    return Ok(scope.set(name, CocoValue::CocoFunction(args, Fun::Node(*block))))
+                    return Ok(scope.set(name, CocoValue::CocoFunction(args, FuncImpl::FromNode(*block))))
                 }
 
                 Ok(CocoValue::CocoNull)
             },
             Node::FunCall(variable, args) => {
                 let value = self.walk_tree(*variable, scope)?;
-                let args_val = args.iter()
+                let mut args_eval = args.iter()
                 .map(|arg| self.walk_tree(*arg.to_owned(), scope).unwrap())
                 .collect::<Vec<CocoValue>>();
 
                 match value {
-                    CocoValue::CocoFunction(fun_args, fun_block) => {
+                    CocoValue::CocoFunction(mut fun_args, fun_block) => {
+                        let reduced_args = fun_args.reduce(&mut args_eval);
+
                         match fun_block {
-                            Fun::Node(block) => {
+                            FuncImpl::FromNode(block) => {
                                 let mut fun_scope = Scope::new(Some(Box::new(scope.to_owned())));
 
-                                for (i, arg) in fun_args.iter().enumerate() {
-                                    let current_arg = self.walk_tree(*args.get(i).unwrap().to_owned(), scope)?;
-                                    fun_scope.set(arg.to_owned(), current_arg);
+                                for arg in reduced_args {
+                                    fun_scope.set(arg.0, arg.1);
                                 }
 
                                 self.walk_tree(block, &mut fun_scope)
                             },
-                            Fun::Builtin(f) => {
-                                Ok(f(args_val))
+                            FuncImpl::Builtin(f) => {
+                                Ok(f(reduced_args))
                             }
                         }
                         
