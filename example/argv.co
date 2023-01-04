@@ -1,0 +1,7 @@
+import argv from 'io'
+
+fun calc(a, b) {
+    return (a * b / (a + b)) % (a / b)
+}
+
+log(calc(num(argv[0]), num(argv[1])))

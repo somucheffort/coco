@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, io::{ self, Write }};
+use std::{collections::BTreeMap, io::{ self, Write }, env};
 
 use crate::interpreter::{scope::Scope, types::{CocoValue, FuncImpl, FieldAccessor, FuncArgs, FuncArg}};
 
@@ -23,10 +23,21 @@ impl CocoModule for IOModule {
 fn get_io() -> CocoValue {
     CocoValue::CocoObject(
         BTreeMap::from([ 
+            ("argv".to_string(), Box::new(get_argv())),
             ("read".to_string(), Box::new(get_read())),
             ("stdin".to_string(), Box::new(get_stdin())),
             ("stdout".to_string(), Box::new(get_stdout()))
         ])
+    )
+}
+
+fn get_argv() -> CocoValue {
+    CocoValue::CocoArray(
+        env::args()
+        .collect::<Vec<String>>()
+        .drain(2..)
+        .map(|s| Box::new(CocoValue::CocoString(s)))
+        .collect::<Vec<Box<CocoValue>>>()
     )
 }
 

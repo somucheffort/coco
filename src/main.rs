@@ -8,6 +8,7 @@ pub mod parser;
 pub mod interpreter;
 pub mod modules;
 
+use colored::Colorize;
 use lexer::{ Lexer };
 use parser::{ Parser };
 use interpreter::{ scope::Scope, Interpreter };
@@ -16,16 +17,14 @@ use interpreter::{ scope::Scope, Interpreter };
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let mut input = "
-    
-    ".to_string();
-
-    if args.len() > 1 {
-        input = fs::read_to_string(&args[1]).unwrap_or_else(|_| input.to_string());
+    if args.len() < 2 {
+        println!("{}: Expected filename, e.g. \n     {}", "ERR".bold().red(), "coco filename.co".bold());
+        return
     }
 
-    let mut lexer = Lexer::new(&input);
+    let input = fs::read_to_string(&args[1]).unwrap();
 
+    let mut lexer = Lexer::new(&input);
     lexer.analyse();
 
     let mut parser = Parser::new(lexer.tokens);
