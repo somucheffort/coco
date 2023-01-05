@@ -6,7 +6,7 @@ use regex::Regex;
 
 use crate::parser::Node;
 
-use super::scope::Scope;
+use super::{scope::Scope, walk_tree};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum FuncImpl {
@@ -147,7 +147,7 @@ impl CocoValue {
         }
     }
 
-    pub fn get_field(&self, field: CocoValue) -> CocoValue {
+    pub fn get_field(&mut self, field: CocoValue, scope: &mut Scope) -> CocoValue {
         match self {
             CocoValue::CocoString(string) => {
                 match field {
@@ -158,6 +158,7 @@ impl CocoValue {
                         }
                     },
                     CocoValue::CocoNumber(val) => {
+                        // FIXME
                         if val < 0.0 {
                             let rev = string.chars().rev().collect::<String>();
 
@@ -182,12 +183,9 @@ impl CocoValue {
                         }
                     },
                     CocoValue::CocoNumber(val) => {
-                        // FIXME
-                        if val < 0.0 {
-                            let rev: Vec<&Box<CocoValue>> = array.iter().rev().collect();
-
-                            // FIXME: revisit it
-                            return *rev.get(val.abs() as usize - 1).unwrap_or(&&Box::new(CocoValue::CocoNull)).to_owned().to_owned()
+                        if val.is_sign_negative() {
+                            let len = array.len() as f64;
+                            return *array.get((len + val) as usize).unwrap_or(&Box::new(CocoValue::CocoNull)).to_owned()
                         }
 
                         *array.get(val as usize).unwrap_or(&Box::new(CocoValue::CocoNull)).to_owned()
@@ -213,32 +211,25 @@ impl CocoValue {
             CocoValue::CocoArray(array) => {
                 match field {
                     CocoValue::CocoNumber(val) => {
-                        // FIXME 
-                        /*
-                        if val < 0.0 {
-                            let rev: Vec<&Box<CocoValue>> = array.into_iter().rev().collect();
+                        if val.is_sign_negative() {
+                            let len = array.len() as f64;
+                            array[(len + val) as usize] = Box::new(value);
+                        } else {
+                            array[val as usize] = Box::new(value);
+                        }
 
-                            // FIXME: revisit it
-                            return *rev.get(val.abs() as usize).unwrap_or(&&Box::new(CocoValue::CocoNull)).to_owned().to_owned()
-                        }*/
-
-                        *array[val as usize] = value;
-
-                        CocoValue::CocoArray(array.to_vec())
+                        self.to_owned()
                     },
                     _ => panic!("Expected number")
                 }
             },
             CocoValue::CocoObject(map) => {
-                match field {
-                    CocoValue::CocoString(val) => {
-                        let mut new_map = map.to_owned();
-                        new_map.insert(val, Box::new(value));
+                if let CocoValue::CocoString(val) = field {
+                    map.insert(val, Box::new(value));
 
-                        CocoValue::CocoObject(new_map)
-                    },
-                    // FIXME
-                    _ => panic!("Unknown field")
+                    self.to_owned()
+                } else {
+                    panic!("Unknown field")
                 }
             },
 
@@ -259,20 +250,20 @@ impl FieldAccessor {
         Self { value, fields }
     }
 
-    pub fn get(&self) -> CocoValue {
-        let container = self.get_container();
+    pub fn get(&mut self, scope: &mut Scope) -> CocoValue {
+        let mut container = self.get_container(scope);
         let last = self.last();
 
         match container.clone() {
-            CocoValue::CocoString(_val) => container.get_field(last),
-            CocoValue::CocoArray(_vals) => container.get_field(last),
-            CocoValue::CocoObject(_vals) => container.get_field(last),
+            CocoValue::CocoString(_val) => container.get_field(last, scope),
+            CocoValue::CocoArray(_vals) => container.get_field(last, scope),
+            CocoValue::CocoObject(_vals) => container.get_field(last, scope),
             _ => panic!("Array, string or object expected")
         }
     }
 
-    pub fn set(&mut self, value: CocoValue) -> CocoValue {
-        let mut container = self.get_container();
+    pub fn set(&mut self, value: CocoValue, scope: &mut Scope) -> CocoValue {
+        let mut container = self.get_container(scope);
         let last = self.last();
 
         match container.clone() {
@@ -282,15 +273,15 @@ impl FieldAccessor {
         }
     }
 
-    pub fn get_container(&self) -> CocoValue {
+    pub fn get_container(&mut self, scope: &mut Scope) -> CocoValue {
         let mut container = self.value.clone();
         for i in 0..self.fields.len() - 1 {
             match self.value.clone() {
                 CocoValue::CocoArray(_val) => {
-                    container = self.value.get_field(self.fields.get(i).unwrap().to_owned())
+                    container = self.value.get_field(self.fields.get(i).unwrap().to_owned(), scope)
                 },
                 CocoValue::CocoObject(_val) => {
-                    container = self.value.get_field(self.fields.get(i).unwrap().to_owned())
+                    container = self.value.get_field(self.fields.get(i).unwrap().to_owned(), scope)
                 },
                 _ => panic!("Array or object expected"),
             }

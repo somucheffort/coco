@@ -11,8 +11,9 @@ impl CocoModule for IOModule {
         let io = get_io();
         if let Some(objects_some) = objects {
             for obj in objects_some.iter() {
-                let field_accessor = FieldAccessor::new(io.clone(), Vec::from([CocoValue::CocoString(obj.to_string())]));
-                scope.set(obj.to_string(), field_accessor.get());
+                let mut field_accessor = FieldAccessor::new(io.clone(), Vec::from([CocoValue::CocoString(obj.to_string())]));
+                let value = field_accessor.get(scope);
+                scope.set(obj.to_string(), value);
             }
             return
         }

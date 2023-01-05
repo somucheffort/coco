@@ -11,7 +11,7 @@ pub mod modules;
 use colored::Colorize;
 use lexer::{ Lexer };
 use parser::{ Parser };
-use interpreter::{ scope::Scope, Interpreter };
+use interpreter::{ scope::Scope, walk_tree };
 
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
     let mut parser = Parser::new(lexer.tokens);
     let parsed = parser.parse().unwrap();
 
-    let mut interpreter = Interpreter::new();
+    
     let mut scope: Scope = Scope::new(None);
-    interpreter.interpret(parsed, &mut scope);
+    walk_tree(parsed, &mut scope);
 }
