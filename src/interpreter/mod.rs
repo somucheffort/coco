@@ -327,6 +327,25 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                     }
                 }
             }
+        },
+        Node::IfElseStatement(cond, if_node, else_node) => {
+            // FIXME: scope?
+            if walk_tree(*cond, scope)?.as_bool() {
+                return walk_tree(*if_node, scope)
+            }
+
+            if else_node.is_none() {
+                return Ok(CocoValue::CocoNull)
+            }
+
+            walk_tree(else_node.unwrap(), scope)
+        },
+        Node::WhileStatement(cond, node) => {
+            while walk_tree(*cond.clone(), scope)?.as_bool() {
+                walk_tree(*node.clone(), scope);
+            }
+
+            Ok(CocoValue::CocoNull)
         }
         _ => Ok(CocoValue::CocoNull)
     }

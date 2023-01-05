@@ -88,6 +88,7 @@ pub enum Node {
 
     BlockStatement(Vec<Box<Node>>),
     IfElseStatement(Box<Node>, Box<Node>, Box<Option<Node>>),
+    WhileStatement(Box<Node>, Box<Node>),
     SwitchStatement(Box<Node>, Vec<SwitchCase>),
     // FIXME: args
     FunCall(Box<Node>, Vec<Box<Node>>),
@@ -205,6 +206,15 @@ impl Parser {
                         Box::new(else_statement)
                     )
                 )
+            },
+            TokenType::WHILE => {
+                self.match_token(TokenType::WHILE);
+                self.consume_token(TokenType::LPAR);
+                let condition = self.expression()?;
+                self.consume_token(TokenType::RPAR);
+                let block = self.block()?;
+
+                Ok(Node::WhileStatement(Box::new(condition), Box::new(block)))
             },
             TokenType::SWITCH => self.switch_statement(),
             TokenType::RETURN => {

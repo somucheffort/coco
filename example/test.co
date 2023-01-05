@@ -1,11 +1,11 @@
-let a = [1, 2, 3, 4, 5]
+import read from 'io'
 
-a[2] = 4634
+let a = true
 
-log(a)
+while (true) {
+    let b = read('Input your data:')
 
-a[-1] = 2406
-
-log(a)
-
-log(a[2], a[-1])
+    if (b == 'yH69!ht') {
+        a = false
+    }
+}
