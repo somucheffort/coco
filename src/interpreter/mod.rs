@@ -153,10 +153,11 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                         CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val + val2.as_number())),
                         CocoValue::CocoArray(_values) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
                         CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() + val2.as_number())),
-                        CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
+                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
                         // FIXME: object + number = string
                         CocoValue::CocoObject(_map) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
-                        CocoValue::CocoNull => Ok(val2)
+                        CocoValue::CocoNull => Ok(val2),
+                        CocoValue::CocoClass(_n, _p, _c) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string()))
                     }
                 },
                 BinaryOp::MINUS => {
@@ -165,9 +166,10 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                         CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val - val2.as_number())),
                         CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() - val2.as_number())),
-                        CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(-&val2.as_number()))
+                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(-&val2.as_number())),
+                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                     }
                 },
                 BinaryOp::MULTIPLY => {
@@ -176,9 +178,10 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                         CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val * val2.as_number())),
                         CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() * val2.as_number())),
-                        CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0))
+                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0)),
+                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                     }
                 },
                 BinaryOp::DIVIDE => {
@@ -187,9 +190,10 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                         CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val / val2.as_number())),
                         CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() / val2.as_number())),
-                        CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0))
+                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0)),
+                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                     }
                 },
                 BinaryOp::REMAINDER => {
@@ -198,9 +202,10 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                         CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val % val2.as_number())),
                         CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() % val2.as_number())),
-                        CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0))
+                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0)),
+                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                     }
                 },
                 BinaryOp::EXPONENT => {
@@ -209,9 +214,10 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                         CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val.powf(val2.as_number()))),
                         CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number().powf(val2.as_number()))),
-                        CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0))
+                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0)),
+                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                     }
                 }
             }
@@ -226,9 +232,10 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                         CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(-val)),
                         CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(-value.as_number())),
-                        CocoValue::CocoFunction(_a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                         CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(-0.0))
+                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(-0.0)),
+                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
                     }
                 },
                 UnaryOp::NOT => {
@@ -238,11 +245,12 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
         },
         Node::Fun(variable, args, block) => {
             if let Node::Var(name) = *variable {
-                return Ok(scope.set(name, CocoValue::CocoFunction(args, FuncImpl::FromNode(*block))))
+                return Ok(scope.set(name.clone(), CocoValue::CocoFunction(name, args, FuncImpl::FromNode(*block))))
             }
 
             Ok(CocoValue::CocoNull)
         },
+        // TODO class and new Class()
         Node::FunCall(variable, args) => {
             let value = walk_tree(*variable, scope)?;
             let mut args_eval = args.iter()
@@ -250,7 +258,7 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
             .collect::<Vec<CocoValue>>();
 
             match value {
-                CocoValue::CocoFunction(mut fun_args, fun_block) => {
+                CocoValue::CocoFunction(_n, mut fun_args, fun_block) => {
                     let reduced_args = fun_args.reduce(&mut args_eval);
 
                     match fun_block {

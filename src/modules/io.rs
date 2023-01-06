@@ -52,6 +52,7 @@ fn get_stdin() -> CocoValue {
 
 fn get_read() -> CocoValue {
     CocoValue::CocoFunction(
+        "read".to_owned(),
         FuncArgs::new(Vec::from([FuncArg::Spread("vals".to_string())])), 
         FuncImpl::Builtin(|args| {
             if let CocoValue::CocoArray(vals) = args.get("vals").unwrap() {
@@ -82,6 +83,7 @@ fn get_stdout() -> CocoValue {
 
 pub fn get_write() -> CocoValue {
     CocoValue::CocoFunction(
+        "write".to_owned(),
         FuncArgs::new(Vec::from([FuncArg::Spread("vals".to_string())])), 
         FuncImpl::Builtin(|args| {
             if let CocoValue::CocoArray(vals) = args.get("vals").unwrap() {

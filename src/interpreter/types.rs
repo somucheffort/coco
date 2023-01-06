@@ -74,9 +74,8 @@ pub enum CocoValue {
     CocoBoolean(bool),
     CocoArray(Vec<Box<CocoValue>>),
     CocoObject(BTreeMap<String, Box<CocoValue>>),
-    // FIXME: args
-    CocoFunction(FuncArgs, FuncImpl),
-    // CocoClass
+    CocoFunction(String, FuncArgs, FuncImpl),
+    CocoClass(String, BTreeMap<String, Box<CocoValue>>, Box<CocoValue>),
     CocoNull
 }
 
@@ -102,9 +101,10 @@ impl CocoValue {
             CocoValue::CocoNumber(val) => *val as i64 == 0,
             CocoValue::CocoBoolean(val) => *val,
             CocoValue::CocoArray(values) => !values.is_empty(),
-            CocoValue::CocoFunction(_s, _n) => true,
+            CocoValue::CocoFunction(_n, _a, _i) => true,
             CocoValue::CocoObject(map) => !map.is_empty(),
-            CocoValue::CocoNull => false
+            CocoValue::CocoNull => false,
+            CocoValue::CocoClass(_n, _p, _c) => true
         }
     }
 
@@ -114,9 +114,10 @@ impl CocoValue {
             CocoValue::CocoNumber(val) => *val,
             CocoValue::CocoBoolean(val) => *val as i64 as f64,
             CocoValue::CocoArray(_values) => f64::NAN,
-            CocoValue::CocoFunction(_s, _n) => f64::NAN,
+            CocoValue::CocoFunction(_n, _a, _i) => f64::NAN,
             CocoValue::CocoObject(_map) => f64::NAN,
-            CocoValue::CocoNull => 0.0
+            CocoValue::CocoNull => 0.0,
+            CocoValue::CocoClass(_n, _p, _c) => f64::NAN
         }
     }
 
@@ -126,12 +127,13 @@ impl CocoValue {
             CocoValue::CocoNumber(val) => val.to_string(),
             CocoValue::CocoBoolean(val) => val.to_string(),
             CocoValue::CocoArray(values) => values.iter().map(|x| x.as_string()).collect::<Vec<_>>().join(","),
-            CocoValue::CocoFunction(_s, _n) => "NotImplemented".to_owned(),
+            CocoValue::CocoFunction(name, _s, _n) => format!("fun {} {{ ... }}", name),
             CocoValue::CocoObject(map) => map.iter()
             .map(|x| (x.0, *x.1.to_owned()))
             .map(|x| format!("{}: {}", x.0, x.1.as_string()))
             .collect::<Vec<_>>().join(", "),
-            CocoValue::CocoNull => "null".to_owned()
+            CocoValue::CocoNull => "null".to_owned(),
+            CocoValue::CocoClass(name, _p, _c) => format!("class {} {{ ... }}", name)
         }
     }
 
@@ -141,9 +143,10 @@ impl CocoValue {
             CocoValue::CocoNumber(val) => val.total_cmp(&value.as_number()),
             CocoValue::CocoBoolean(val) => val.cmp(&value.as_bool()),
             CocoValue::CocoArray(_values) => self.partial_cmp(&value).unwrap(),
-            CocoValue::CocoFunction(_s, _n) => self.partial_cmp(&value).unwrap(),
+            CocoValue::CocoFunction(_n, _a, _i) => self.partial_cmp(&value).unwrap(),
             CocoValue::CocoObject(_map) => self.partial_cmp(&value).unwrap(),
-            CocoValue::CocoNull => self.partial_cmp(&value).unwrap()
+            CocoValue::CocoNull => self.partial_cmp(&value).unwrap(),
+            CocoValue::CocoClass(_n, _p, _c) => self.partial_cmp(&value).unwrap()
         }
     }
 
@@ -307,9 +310,10 @@ impl std::fmt::Display for CocoValue {
             CocoValue::CocoNumber(_val) => write!(f, "{}", &self.as_string().yellow()),
             CocoValue::CocoBoolean(_val) => write!(f, "{}", &self.as_string().blue()),
             CocoValue::CocoArray(values) => write!(f, "[ {} ]", values.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(", ")),
-            CocoValue::CocoFunction(_s, _n) => write!(f, "{:#?} {:#?}", _s, _n),
+            CocoValue::CocoFunction(name, _a, _i) => write!(f, "fun {} {{ ... }}", name),
             CocoValue::CocoObject(_map) => write!(f, "{{ {} }}", &self.as_string()),
-            CocoValue::CocoNull => write!(f, "{}", "null".bold())
+            CocoValue::CocoNull => write!(f, "{}", "null".bold()),
+            CocoValue::CocoClass(name, _p, _c) => write!(f, "class {} {{ ... }}", name),
         }
     }
 }

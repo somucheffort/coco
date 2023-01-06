@@ -78,7 +78,7 @@ pub enum Node {
     Bool(bool),
     Array(Vec<Box<Node>>),
     Object(BTreeMap<String, Box<Node>>),
-
+    Class(String, BTreeMap<String, Node>, Option<Node>),
     Null,
 
     // ArrayFun()
@@ -187,6 +187,54 @@ impl Parser {
                     )
                 )
             },
+            TokenType::CLASS => {
+                self.match_token(TokenType::CLASS);
+                let class_name = self.consume_token(TokenType::WORD)?.text;
+                // TODO extending
+                self.match_token(TokenType::LBRACE);
+                let mut prototype: BTreeMap<String, Node> = BTreeMap::default();
+                let mut constructor = None;
+                while let Err(_b) = self.match_token(TokenType::RBRACE) {
+                    let class_current = self.get_token(None);
+
+                    if class_current.token_type == TokenType::WORD {
+                        let name = self.consume_token(TokenType::WORD)?.text;
+                        // TODO vars
+                        self.consume_token(TokenType::LPAR);
+                        let mut args: FuncArgs = FuncArgs::new(vec![]);
+                        while let Err(_b) = self.match_token(TokenType::RPAR) {
+                            let arg = self.consume_token(TokenType::WORD);
+                            args.add_argument(FuncArg::Required(arg?.text));
+                            self.match_token(TokenType::COMMA);
+                        }
+                        let block = self.block();
+
+                        if name == "constructor" {
+                            constructor = Some(Node::Fun(
+                                Box::new(
+                                    Node::Var(name)
+                                ), 
+                                args,
+                                Box::new(
+                                    block?
+                                ),
+                            ));
+                        } else {
+                            prototype.insert(name, Node::Fun(
+                                Box::new(
+                                    Node::Var(name)
+                                ), 
+                                args,
+                                Box::new(
+                                    block?
+                                ),
+                            ));
+                        }
+                    }
+                }
+
+                Ok(Node::Class(class_name, prototype, constructor))
+            }
             TokenType::IF => {
                 self.match_token(TokenType::IF);
                 self.consume_token(TokenType::LPAR);

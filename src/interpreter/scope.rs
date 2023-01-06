@@ -17,18 +17,21 @@ impl Scope {
             variables: HashMap::from([
                 ("log".to_owned(), io::get_write()),
                 ("num".to_owned(), CocoValue::CocoFunction(
+                    "num".to_owned(),
                     FuncArgs::new(Vec::from([FuncArg::Required("any".to_string())])), 
                     FuncImpl::Builtin(|vals| {
                         CocoValue::CocoNumber(vals.get("any").unwrap().as_number())
                     })
                 )),
                 ("bool".to_owned(), CocoValue::CocoFunction(
+                    "bool".to_owned(),
                     FuncArgs::new(Vec::from([FuncArg::Required("any".to_string())])), 
                     FuncImpl::Builtin(|vals| {
                         CocoValue::CocoBoolean(vals.get("any").unwrap().as_bool())
                     })
                 )),
                 ("str".to_owned(), CocoValue::CocoFunction(
+                    "str".to_owned(),
                     FuncArgs::new(Vec::from([FuncArg::Required("any".to_string())])), 
                     FuncImpl::Builtin(|vals| {
                         CocoValue::CocoString(vals.get("any").unwrap().as_string())

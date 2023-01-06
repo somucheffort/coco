@@ -1,11 +1,7 @@
-import read from 'io'
+class Rect {
+    constructor() {
 
-let a = true
-
-while (true) {
-    let b = read('Input your data:')
-
-    if (b == 'yH69!ht') {
-        a = false
     }
+
+    square() {}
 }
