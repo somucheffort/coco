@@ -78,7 +78,7 @@ pub enum Node {
     Bool(bool),
     Array(Vec<Box<Node>>),
     Object(BTreeMap<String, Box<Node>>),
-    Class(String, BTreeMap<String, Node>, Option<Node>),
+    Class(String, BTreeMap<String, Node>, Option<Box<Node>>),
     Null,
 
     // ArrayFun()
@@ -210,7 +210,7 @@ impl Parser {
                         let block = self.block();
 
                         if name == "constructor" {
-                            constructor = Some(Node::Fun(
+                            constructor = Some(Box::new(Node::Fun(
                                 Box::new(
                                     Node::Var(name)
                                 ), 
@@ -218,9 +218,9 @@ impl Parser {
                                 Box::new(
                                     block?
                                 ),
-                            ));
+                            )));
                         } else {
-                            prototype.insert(name, Node::Fun(
+                            prototype.insert(name.clone(), Node::Fun(
                                 Box::new(
                                     Node::Var(name)
                                 ), 
