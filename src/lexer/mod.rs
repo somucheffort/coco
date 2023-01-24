@@ -275,7 +275,7 @@ impl Lexer {
     }
 
     pub fn parse_comment(&mut self, multiline: Option<bool>) -> Result<bool, String> {
-        if multiline.unwrap() {
+        if multiline.is_some() {
             loop {
                 let current = self.peek(None);
                 if current.to_string() + &self.peek(Some(1)).to_string() == "*/" {
@@ -288,9 +288,11 @@ impl Lexer {
             }
             self.next_char();
             self.next_char();
+
+            return Ok(true)
         }
 
-        while "\r\n\0".to_string().contains(self.peek(None)) {
+        while !"\r\n\0".to_string().contains(self.peek(None)) {
             self.next_char();
         }
 
