@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap};
 use rand::{ thread_rng, Rng };
 
-use crate::interpreter::{scope::Scope, types::{CocoValue, FuncImpl, FieldAccessor, FuncArgs, FuncArg}};
+use crate::interpreter::{scope::{Scope}, types::{Value, FuncImpl, FieldAccessor, FunctionArguments, FunctionArgument}};
 
 use super::CocoModule;
 
@@ -10,9 +10,10 @@ pub struct MathModule {}
 impl CocoModule for MathModule {
     fn init(scope: &mut Scope, objects: Option<Vec<String>>) {
         let math = get_math();
+
         if let Some(objects_some) = objects {
             for obj in objects_some.iter() {
-                let mut field_accessor = FieldAccessor::new(math.clone(), Vec::from([CocoValue::CocoString(obj.to_string())]));
+                let mut field_accessor = FieldAccessor::new(math.clone(), Vec::from([Value::String(obj.to_string())]));
                 let value = field_accessor.get(scope);
                 scope.set(obj.to_string(), value);
             }
@@ -22,8 +23,8 @@ impl CocoModule for MathModule {
     }
 }
 
-fn get_math() -> CocoValue {
-    CocoValue::CocoObject(
+fn get_math() -> Value {
+    Value::Object(
         BTreeMap::from([ 
             ("pow".to_string(), Box::new(get_pow())),
             ("abs".to_string(), Box::new(get_abs())),
@@ -37,92 +38,92 @@ fn get_math() -> CocoValue {
     )
 }
 
-fn get_pow() -> CocoValue {
-    CocoValue::CocoFunction(
+fn get_pow() -> Value {
+    Value::Function(
         "pow".to_owned(),
-        FuncArgs::new(Vec::from([FuncArg::Required("num".to_string()), FuncArg::Required("pow".to_string())])),
+        FunctionArguments::new(Vec::from([FunctionArgument::Required("num".to_string()), FunctionArgument::Required("pow".to_string())])),
         FuncImpl::Builtin(|args| {
-            CocoValue::CocoNumber(args.get("num").unwrap().as_number().powf(args.get("pow").unwrap().as_number()))
+            Value::Number(args.get("num").unwrap().as_number().powf(args.get("pow").unwrap().as_number()))
         }
     ))
 }
 
-fn get_abs() -> CocoValue {
-    CocoValue::CocoFunction(
+fn get_abs() -> Value {
+    Value::Function(
         "abs".to_owned(),
-        FuncArgs::new(Vec::from([FuncArg::Required("num".to_string())])),
+        FunctionArguments::new(Vec::from([FunctionArgument::Required("num".to_string())])),
         FuncImpl::Builtin(|args| {
-            CocoValue::CocoNumber(args.get("num").unwrap().as_number().abs())
+            Value::Number(args.get("num").unwrap().as_number().abs())
         }
     ))
 }
 
-fn get_ceil() -> CocoValue {
-    CocoValue::CocoFunction(
+fn get_ceil() -> Value {
+    Value::Function(
         "ceil".to_owned(),
-        FuncArgs::new(Vec::from([FuncArg::Required("num".to_string())])),
+        FunctionArguments::new(Vec::from([FunctionArgument::Required("num".to_string())])),
         FuncImpl::Builtin(|args| {
-            CocoValue::CocoNumber(args.get("num").unwrap().as_number().ceil())
+            Value::Number(args.get("num").unwrap().as_number().ceil())
         }
     ))
 }
 
-fn get_floor() -> CocoValue {
-    CocoValue::CocoFunction(
+fn get_floor() -> Value {
+    Value::Function(
         "floor".to_owned(),
-        FuncArgs::new(Vec::from([FuncArg::Required("num".to_string())])),
+        FunctionArguments::new(Vec::from([FunctionArgument::Required("num".to_string())])),
         FuncImpl::Builtin(|args| {
-            CocoValue::CocoNumber(args.get("num").unwrap().as_number().floor())
+            Value::Number(args.get("num").unwrap().as_number().floor())
         }
     ))
 }
 
-fn get_round() -> CocoValue {
-    CocoValue::CocoFunction(
+fn get_round() -> Value {
+    Value::Function(
         "round".to_owned(),
-        FuncArgs::new(Vec::from([FuncArg::Required("num".to_string())])),
+        FunctionArguments::new(Vec::from([FunctionArgument::Required("num".to_string())])),
         FuncImpl::Builtin(|args| {
-            CocoValue::CocoNumber(args.get("num").unwrap().as_number().round())
+            Value::Number(args.get("num").unwrap().as_number().round())
         }
     ))
 }
 
-fn get_random() -> CocoValue {
-    CocoValue::CocoFunction(
+fn get_random() -> Value {
+    Value::Function(
         "random".to_owned(),
-        FuncArgs::new(Vec::from([FuncArg::Spread("".to_string())])), 
+        FunctionArguments::new(Vec::from([FunctionArgument::Spread("".to_string())])), 
         FuncImpl::Builtin(|_| {
             let mut rng = thread_rng();
-            CocoValue::CocoNumber(rng.gen())
+            Value::Number(rng.gen())
         }
     ))
 }
 
-fn get_max() -> CocoValue {
-    CocoValue::CocoFunction(
+fn get_max() -> Value {
+    Value::Function(
         "max".to_owned(),
-        FuncArgs::new(Vec::from([FuncArg::Required("num1".to_string()), FuncArg::Required("num2".to_string())])), 
+        FunctionArguments::new(Vec::from([FunctionArgument::Required("num1".to_string()), FunctionArgument::Required("num2".to_string())])), 
         FuncImpl::Builtin(|args| {
             args
             .into_values()
             .into_iter()
             .max_by(|v1, v2| v1.as_number().total_cmp(&v2.as_number()))
-            .unwrap_or(CocoValue::CocoNull)
+            .unwrap_or(Value::Null)
             .to_owned()
         }
     ))
 }
 
-fn get_min() -> CocoValue {
-    CocoValue::CocoFunction(
+fn get_min() -> Value {
+    Value::Function(
         "min".to_owned(),
-        FuncArgs::new(Vec::from([FuncArg::Required("num1".to_string()), FuncArg::Required("num2".to_string())])), 
+        FunctionArguments::new(Vec::from([FunctionArgument::Required("num1".to_string()), FunctionArgument::Required("num2".to_string())])), 
         FuncImpl::Builtin(|args| {
             args
             .into_values()
             .into_iter()
             .min_by(|v1, v2| v1.as_number().total_cmp(&v2.as_number()))
-            .unwrap_or(CocoValue::CocoNull)
+            .unwrap_or(Value::Null)
             .to_owned()
         }
     ))

@@ -1,4 +1,4 @@
-use crate::{interpreter::{scope::Scope}};
+use crate::{interpreter::{scope::{Scope}}};
 
 use self::{io::IOModule, math::MathModule};
 

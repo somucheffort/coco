@@ -1,5 +1,7 @@
 use phf::{ phf_map };
 
+use crate::{Error, Resolver};
+
 const QUOTES: &str = "\'\"";
 const LETTERS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const DIGITS: &str = "0123456789";
@@ -147,7 +149,8 @@ pub enum TokenType {
 #[derive(Debug, Clone)]
 pub struct Token {
     pub token_type: TokenType,
-    pub text: String
+    pub text: String,
+    pub pos: usize
 }
 
 #[derive(Debug, Clone)]
@@ -155,18 +158,20 @@ pub struct Lexer {
     pub code: String,
     pub tokens: Vec<Token>,
     pub pos: usize,
+    pub resolver: Resolver
 }
 
 impl Lexer {
-    pub fn new(input: &str) -> Self {
+    pub fn new(input: &str, resolver: &Resolver) -> Self {
         Self {
             code: input.to_owned(),
             tokens: Vec::new(),
-            pos: 0
+            pos: 0,
+            resolver: resolver.to_owned()
         }
     }
 
-    pub fn analyse(&mut self) -> Vec<Token> {
+    pub fn analyse(&mut self) -> Result<(), Error> {
         while self.pos < self.code.len() {
             let current = self.peek(None);
             let mut result = None;
@@ -183,15 +188,17 @@ impl Lexer {
                 self.next_char();
             }
 
-            if result.is_some() && result.to_owned().unwrap().is_err() {
-                panic!("{:#?}", result.unwrap().err())
+            if result.is_some() && result.as_ref().unwrap().is_err() {
+                if let Some(s) = result {
+                    return Err(s.err().unwrap_or_else(|| Error { msg: "Unexpected error".to_string(), pos: vec![] }))
+                }
             }
         }
 
-        self.tokens.clone()
+        Ok(())
     }
 
-    pub fn parse_operator(&mut self) -> Result<bool, String> {
+    pub fn parse_operator(&mut self) -> Result<(), Error> {
         let mut buffer: String = "".to_owned();
         let mut current = self.peek(None);
         loop {
@@ -209,16 +216,20 @@ impl Lexer {
         }
 
         self.add_token(OPERATORS.get(buffer.as_str()).unwrap().to_owned(), buffer.as_str());
-        Ok(true)
+        
+        Ok(())
     }
 
-    pub fn parse_number(&mut self) -> Result<bool, String> {
+    pub fn parse_number(&mut self) -> Result<(), Error> {
         let mut buffer: String = "".to_owned();
         let mut current = self.peek(None);
         loop {
             if current == '.' {
                 if buffer.contains('.') {
-                    return Err("Invalid float".to_string())
+                    return Err(Error { 
+                        msg: "Invalid float".to_owned(), 
+                        pos: self.resolver.resolve_where(self.pos) 
+                    })
                 }
             } else if !DIGITS.contains(current) {
                 break
@@ -229,17 +240,20 @@ impl Lexer {
 
         self.add_token(TokenType::NUMBER, buffer.as_str());
 
-        Ok(true)
+        Ok(())
     }
 
-    pub fn parse_string(&mut self) -> Result<bool, String> {
+    pub fn parse_string(&mut self) -> Result<(), Error> {
         let mut buffer: String = "".to_owned();
         let quote = self.peek(None);
         let mut current = self.next_char();
 
         loop {
             if current == '\0' {
-                return Err("String didnt close".to_string());
+                return Err(Error { 
+                    msg: "String did not close".to_string(), 
+                    pos: self.resolver.resolve_where(self.pos) 
+                });
             }
             if current == quote {
                 break;
@@ -251,10 +265,10 @@ impl Lexer {
         self.next_char();
         self.add_token(TokenType::STRING, buffer.as_str());
 
-        Ok(true)
+        Ok(())
     }
 
-    pub fn parse_word(&mut self) -> Result<bool, String> {
+    pub fn parse_word(&mut self) -> Result<(), Error> {
         let mut buffer: String = "".to_owned();
         let mut current = self.peek(None);
         loop {
@@ -267,14 +281,15 @@ impl Lexer {
 
         if KEYWORDS.contains_key(buffer.as_str()) {
             self.add_token(KEYWORDS.get(buffer.as_str()).unwrap().to_owned(), buffer.as_str());
-            return Ok(true)
+            return Ok(())
         }
 
         self.add_token(TokenType::WORD, buffer.as_str());
-        Ok(true)
+        
+        Ok(())
     }
 
-    pub fn parse_comment(&mut self, multiline: Option<bool>) -> Result<bool, String> {
+    pub fn parse_comment(&mut self, multiline: Option<bool>) -> Result<(), Error> {
         if multiline.is_some() {
             loop {
                 let current = self.peek(None);
@@ -282,21 +297,24 @@ impl Lexer {
                     break
                 }
                 if current == '\0' {
-                    return Err("Multiline comment did not close".to_string())
+                    return Err(Error { 
+                        msg: "Multiline comment did not close".to_string(), 
+                        pos: self.resolver.resolve_where(self.pos) 
+                    });
                 }
                 self.next_char();
             }
             self.next_char();
             self.next_char();
 
-            return Ok(true)
+            return Ok(())
         }
 
         while !"\r\n\0".to_string().contains(self.peek(None)) {
             self.next_char();
         }
 
-        Ok(true)
+        Ok(())
     }
 
     pub fn peek(&self, pos: Option<usize>) -> char {
@@ -314,7 +332,7 @@ impl Lexer {
     }
 
     pub fn add_token(&mut self, token_type: TokenType, text: &str) {
-        let token = Token { token_type, text: text.to_owned() };
+        let token = Token { token_type, text: text.to_owned(), pos: self.pos };
         self.tokens.push(token)
     }
 }

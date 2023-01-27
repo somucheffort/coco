@@ -1,27 +1,30 @@
 use core::panic;
 use std::{collections::{BTreeMap, HashMap}, cmp::Ordering};
 
-use crate::{parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp, AssignmentOp }, modules::import_module};
+use crate::{parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp, AssignmentOp }, modules::import_module, Error};
 
 pub mod scope;
 pub mod types;
 
-use self::{scope::Scope, types::{CocoValue, FieldAccessor, FuncImpl, create_string, FuncArg}};
+use self::{scope::{ Scope }, types::{Value, FieldAccessor, FuncImpl, FunctionArgument}};
 
 pub struct Interpreter {}
 
-pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
+pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<Value, Error> {
     match node {
         Node::Import(module) => {
             import_module(module.as_str(), scope, None);
-            Ok(CocoValue::CocoNull)
+            Ok(Value::Null)
         },
         Node::ImportFrom(module, objects) => {
             import_module(module.as_str(), scope, Some(objects));
-            Ok(CocoValue::CocoNull)
+            Ok(Value::Null)
         },
         Node::BlockStatement(statements) => {
-            let mut result = CocoValue::CocoNull;
+            let mut result = Value::Null;
+
+            
+
             for statement in statements {
                 match *statement {
                     Node::Return(value) => {
@@ -55,50 +58,52 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                     initial_value = set_value;
                 },
                 AssignmentOp::MINUSEQ => {
-                    initial_value = CocoValue::CocoNumber(initial_value.as_number() - set_value.as_number());
+                    initial_value = Value::Number(initial_value.as_number() - set_value.as_number());
                 },
                 AssignmentOp::PLUSEQ => {
-                    initial_value = CocoValue::CocoNumber(initial_value.as_number() + set_value.as_number());
+                    initial_value = Value::Number(initial_value.as_number() + set_value.as_number());
                 },
                 AssignmentOp::MULEQ => {
-                    initial_value = CocoValue::CocoNumber(initial_value.as_number() * set_value.as_number());
+                    initial_value = Value::Number(initial_value.as_number() * set_value.as_number());
                 },
                 AssignmentOp::DIVEQ => {
-                    initial_value = CocoValue::CocoNumber(initial_value.as_number() / set_value.as_number());
+                    initial_value = Value::Number(initial_value.as_number() / set_value.as_number());
                 },
                 AssignmentOp::REMEQ => {
-                    initial_value = CocoValue::CocoNumber(initial_value.as_number() % set_value.as_number());
+                    initial_value = Value::Number(initial_value.as_number() % set_value.as_number());
                 },
                 AssignmentOp::EXPEQ => {
-                    initial_value = CocoValue::CocoNumber(initial_value.as_number().powf(set_value.as_number()));
+                    initial_value = Value::Number(initial_value.as_number().powf(set_value.as_number()));
                 }
             }
 
             if let Node::Var(name) = *variable_node.clone() {
-               scope.set(name, initial_value.clone());
+                scope.set(name, initial_value.clone());
             }
+
             if let Node::FieldAccess(var, indices) = *variable_node.clone() {
                 if let Node::Var(name) = *var.clone() {
                     let var_value = walk_tree(*var, scope)?;
-                    let fields = indices.iter().map(|i| walk_tree(*i.to_owned(), scope).unwrap_or(CocoValue::CocoNull)).collect::<Vec<CocoValue>>();
+                    let fields = indices.iter().map(|i| walk_tree(*i.to_owned(), scope).unwrap_or(Value::Null)).collect::<Vec<Value>>();
                     let mut field_accessor = FieldAccessor::new(var_value, fields);
                     let value = field_accessor.set(initial_value, scope);
+
                     scope.set(name, value);
                 }
             }
 
-            Ok(CocoValue::CocoNull)
+            Ok(Value::Null)
         },
         Node::Var(name) => Ok(scope.get(name).to_owned()),
         Node::FieldAccess(variable, indices) => {
             let value = walk_tree(*variable, scope)?;
-            let fields = indices.iter().map(|i| walk_tree(*i.to_owned(), scope).unwrap_or(CocoValue::CocoNull)).collect::<Vec<CocoValue>>();
+            let fields = indices.iter().map(|i| walk_tree(*i.to_owned(), scope).unwrap_or(Value::Null)).collect::<Vec<Value>>();
             let mut field_accessor = FieldAccessor::new(value, fields);
             Ok(field_accessor.get(scope))
         },
-        Node::String(value) => Ok(create_string(value, scope)),
-        Node::Number(value) => Ok(CocoValue::CocoNumber(value)),
-        Node::Bool(value) => Ok(CocoValue::CocoBoolean(value)),
+        Node::String(value) => Ok(Value::create_string(value, scope)),
+        Node::Number(value) => Ok(Value::Number(value)),
+        Node::Bool(value) => Ok(Value::Boolean(value)),
         Node::Array(value) => {
             let mut array_values = vec![];
             for node in value {
@@ -106,14 +111,14 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                 array_values.push(Box::new(value))
             }
 
-            Ok(CocoValue::CocoArray(array_values))
+            Ok(Value::Array(array_values))
         },
         Node::Object(map) => Ok(
-            CocoValue::CocoObject(
+            Value::Object(
                 map
                 .into_iter()
                 .map(|x| (x.0, Box::new(walk_tree(*x.1, scope).unwrap())))
-                .collect::<BTreeMap<String, Box<CocoValue>>>()
+                .collect::<BTreeMap<String, Box<Value>>>()
             )
         ),
         Node::Ternary(node, true_cond, false_cond) => {
@@ -132,14 +137,14 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
             let ord = val1.clone()?.compare(val2.clone()?);
             
             match operator {
-                LogicalOp::AND => Ok(CocoValue::CocoBoolean(val1?.as_bool() && val2?.as_bool())),
-                LogicalOp::OR => Ok(CocoValue::CocoBoolean(val1?.as_bool() || val2?.as_bool())),
-                LogicalOp::EQ => Ok(CocoValue::CocoBoolean(ord.is_eq())),
-                LogicalOp::NOTEQ => Ok(CocoValue::CocoBoolean(ord.is_ne())),
-                LogicalOp::GT => Ok(CocoValue::CocoBoolean(ord == Ordering::Greater)),
-                LogicalOp::GTEQ => Ok(CocoValue::CocoBoolean(ord == Ordering::Greater || ord == Ordering::Equal)),
-                LogicalOp::LT => Ok(CocoValue::CocoBoolean(ord == Ordering::Less)),
-                LogicalOp::LTEQ => Ok(CocoValue::CocoBoolean(ord == Ordering::Less || ord == Ordering::Equal))
+                LogicalOp::AND => Ok(Value::Boolean(val1?.as_bool() && val2?.as_bool())),
+                LogicalOp::OR => Ok(Value::Boolean(val1?.as_bool() || val2?.as_bool())),
+                LogicalOp::EQ => Ok(Value::Boolean(ord.is_eq())),
+                LogicalOp::NOTEQ => Ok(Value::Boolean(ord.is_ne())),
+                LogicalOp::GT => Ok(Value::Boolean(ord == Ordering::Greater)),
+                LogicalOp::GTEQ => Ok(Value::Boolean(ord == Ordering::Greater || ord == Ordering::Equal)),
+                LogicalOp::LT => Ok(Value::Boolean(ord == Ordering::Less)),
+                LogicalOp::LTEQ => Ok(Value::Boolean(ord == Ordering::Less || ord == Ordering::Equal))
             }
         },
         Node::Binary(operator, node1, node2) => {
@@ -149,75 +154,75 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
             match operator {
                 BinaryOp::PLUS => {
                     match val1.clone() {
-                        CocoValue::CocoString(val) => Ok(CocoValue::CocoString(val + &val2.as_string())),
-                        CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val + val2.as_number())),
-                        CocoValue::CocoArray(_values) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
-                        CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() + val2.as_number())),
-                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
+                        Value::String(val) => Ok(Value::String(val + &val2.as_string())),
+                        Value::Number(val) => Ok(Value::Number(val + val2.as_number())),
+                        Value::Array(_values) => Ok(Value::String(val1.as_string() + &val2.as_string())),
+                        Value::Boolean(_val) => Ok(Value::Number(val1.as_number() + val2.as_number())),
+                        Value::Function(_n, _a, _b) => Ok(Value::String(val1.as_string() + &val2.as_string())),
                         // FIXME: object + number = string
-                        CocoValue::CocoObject(_map) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string())),
-                        CocoValue::CocoNull => Ok(val2),
-                        CocoValue::CocoClass(_n, _p, _c) => Ok(CocoValue::CocoString(val1.as_string() + &val2.as_string()))
+                        Value::Object(_map) => Ok(Value::String(val1.as_string() + &val2.as_string())),
+                        Value::Null => Ok(val2),
+                        Value::Class(_n, _p, _c) => Ok(Value::String(val1.as_string() + &val2.as_string()))
                     }
                 },
                 BinaryOp::MINUS => {
                     match val1.clone() {
-                        CocoValue::CocoString(_val) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val - val2.as_number())),
-                        CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() - val2.as_number())),
-                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(-&val2.as_number())),
-                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        Value::String(_val) => Ok(Value::Number(f64::NAN)),
+                        Value::Number(val) => Ok(Value::Number(val - val2.as_number())),
+                        Value::Array(_values) => Ok(Value::Number(f64::NAN)),
+                        Value::Boolean(_val) => Ok(Value::Number(val1.as_number() - val2.as_number())),
+                        Value::Function(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
+                        Value::Object(_map) => Ok(Value::Number(f64::NAN)),
+                        Value::Null => Ok(Value::Number(-&val2.as_number())),
+                        Value::Class(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
                     }
                 },
                 BinaryOp::MULTIPLY => {
                     match val1.clone() {
-                        CocoValue::CocoString(val) => Ok(CocoValue::CocoString(val.repeat(val2.as_number() as usize))),
-                        CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val * val2.as_number())),
-                        CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() * val2.as_number())),
-                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0)),
-                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        Value::String(val) => Ok(Value::String(val.repeat(val2.as_number() as usize))),
+                        Value::Number(val) => Ok(Value::Number(val * val2.as_number())),
+                        Value::Array(_values) => Ok(Value::Number(f64::NAN)),
+                        Value::Boolean(_val) => Ok(Value::Number(val1.as_number() * val2.as_number())),
+                        Value::Function(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
+                        Value::Object(_map) => Ok(Value::Number(f64::NAN)),
+                        Value::Null => Ok(Value::Number(0.0)),
+                        Value::Class(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
                     }
                 },
                 BinaryOp::DIVIDE => {
                     match val1.clone() {
-                        CocoValue::CocoString(_val) => Ok(CocoValue::CocoNumber(val1.as_number() / val2.as_number())),
-                        CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val / val2.as_number())),
-                        CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() / val2.as_number())),
-                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0)),
-                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        Value::String(_val) => Ok(Value::Number(val1.as_number() / val2.as_number())),
+                        Value::Number(val) => Ok(Value::Number(val / val2.as_number())),
+                        Value::Array(_values) => Ok(Value::Number(f64::NAN)),
+                        Value::Boolean(_val) => Ok(Value::Number(val1.as_number() / val2.as_number())),
+                        Value::Function(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
+                        Value::Object(_map) => Ok(Value::Number(f64::NAN)),
+                        Value::Null => Ok(Value::Number(0.0)),
+                        Value::Class(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
                     }
                 },
                 BinaryOp::REMAINDER => {
                     match val1.clone() {
-                        CocoValue::CocoString(_val) => Ok(CocoValue::CocoNumber(val1.as_number() % val2.as_number())),
-                        CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val % val2.as_number())),
-                        CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number() % val2.as_number())),
-                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0)),
-                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        Value::String(_val) => Ok(Value::Number(val1.as_number() % val2.as_number())),
+                        Value::Number(val) => Ok(Value::Number(val % val2.as_number())),
+                        Value::Array(_values) => Ok(Value::Number(f64::NAN)),
+                        Value::Boolean(_val) => Ok(Value::Number(val1.as_number() % val2.as_number())),
+                        Value::Function(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
+                        Value::Object(_map) => Ok(Value::Number(f64::NAN)),
+                        Value::Null => Ok(Value::Number(0.0)),
+                        Value::Class(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
                     }
                 },
                 BinaryOp::EXPONENT => {
                     match val1.clone() {
-                        CocoValue::CocoString(_val) => Ok(CocoValue::CocoNumber(val1.as_number().powf(val2.as_number()))),
-                        CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(val.powf(val2.as_number()))),
-                        CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(val1.as_number().powf(val2.as_number()))),
-                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(0.0)),
-                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        Value::String(_val) => Ok(Value::Number(val1.as_number().powf(val2.as_number()))),
+                        Value::Number(val) => Ok(Value::Number(val.powf(val2.as_number()))),
+                        Value::Array(_values) => Ok(Value::Number(f64::NAN)),
+                        Value::Boolean(_val) => Ok(Value::Number(val1.as_number().powf(val2.as_number()))),
+                        Value::Function(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
+                        Value::Object(_map) => Ok(Value::Number(f64::NAN)),
+                        Value::Null => Ok(Value::Number(0.0)),
+                        Value::Class(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
                     }
                 }
             }
@@ -228,42 +233,61 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
             match operator {
                 UnaryOp::MINUS => {
                     match value.clone() {
-                        CocoValue::CocoString(_val) => Ok(CocoValue::CocoNumber(-value.as_number())),
-                        CocoValue::CocoNumber(val) => Ok(CocoValue::CocoNumber(-val)),
-                        CocoValue::CocoArray(_values) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoBoolean(_val) => Ok(CocoValue::CocoNumber(-value.as_number())),
-                        CocoValue::CocoFunction(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoObject(_map) => Ok(CocoValue::CocoNumber(f64::NAN)),
-                        CocoValue::CocoNull => Ok(CocoValue::CocoNumber(-0.0)),
-                        CocoValue::CocoClass(_n, _a, _b) => Ok(CocoValue::CocoNumber(f64::NAN)),
+                        Value::String(_val) => Ok(Value::Number(-value.as_number())),
+                        Value::Number(val) => Ok(Value::Number(-val)),
+                        Value::Array(_values) => Ok(Value::Number(f64::NAN)),
+                        Value::Boolean(_val) => Ok(Value::Number(-value.as_number())),
+                        Value::Function(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
+                        Value::Object(_map) => Ok(Value::Number(f64::NAN)),
+                        Value::Null => Ok(Value::Number(-0.0)),
+                        Value::Class(_n, _a, _b) => Ok(Value::Number(f64::NAN)),
                     }
                 },
                 UnaryOp::NOT => {
-                    Ok(CocoValue::CocoBoolean(!value.as_bool()))
+                    Ok(Value::Boolean(!value.as_bool()))
                 }
             }
         },
         Node::Fun(variable, args, block) => {
             if let Node::Var(name) = *variable {
-                return Ok(scope.set(name.clone(), CocoValue::CocoFunction(name, args, FuncImpl::FromNode(*block))))
+                return Ok(scope.set(
+                    name.clone(), 
+                    Value::Function(name, args, FuncImpl::FromNode(*block))
+                ))
             }
 
-            Ok(CocoValue::CocoNull)
+            Ok(Value::Null)
         },
         // TODO class and new Class()
+        Node::Class(name, constructor, prototype) => {
+            println!("{:#?}", name);
+            
+            let prot = prototype.iter().fold(BTreeMap::default(), |mut acc, val| {
+                let fun = walk_tree(val.1.to_owned(), scope).unwrap();
+
+                acc.insert(val.0.to_owned(), Box::new(fun));
+
+                acc
+            });
+
+            let cons: Option<Box<Value>> = constructor.map(|c| Box::new(walk_tree(*c, scope).unwrap()));
+
+            // fixme
+            Ok(scope.set(name.clone(), Value::Class(name, cons, prot)))
+        },
         Node::FunCall(variable, args) => {
-            let value = walk_tree(*variable, scope)?;
+            let value = walk_tree(*variable.clone(), scope)?;
             let mut args_eval = args.iter()
             .map(|arg| walk_tree(*arg.to_owned(), scope).unwrap())
-            .collect::<Vec<CocoValue>>();
+            .collect::<Vec<Value>>();
 
             match value {
-                CocoValue::CocoFunction(_n, mut fun_args, fun_block) => {
+                Value::Function(_, mut fun_args, fun_block) => {
                     let reduced_args = fun_args.reduce(&mut args_eval);
 
                     match fun_block {
                         FuncImpl::FromNode(block) => {
-                            let mut fun_scope = Scope::new(Some(Box::new(scope.to_owned())));
+                            let mut fun_scope = Scope::from(Some(Box::new(scope.to_owned())), scope.filename.clone());
 
                             for arg in reduced_args {
                                 fun_scope.set(arg.0, arg.1);
@@ -272,13 +296,29 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                             walk_tree(block, &mut fun_scope)
                         },
                         FuncImpl::Builtin(f) => {
+
                             Ok(f(reduced_args))
                         }
                     }
                     
                 },
                 _ => {
-                    Err("Unknown function".to_string())
+                    match *variable {
+                        Node::Var(name) => {
+                            scope.throw_exception(format!("{name} is not a function"), vec![0, 0]);
+                            return Err(Error { msg: "".to_string(), pos: vec![] })
+                        },
+                        Node::FieldAccess(var, _) => {
+                            if let Node::Var(name) = *var {
+                                scope.throw_exception(format!("{name} is not a function"), vec![0, 0]);
+                                return Err(Error { msg: "".to_string(), pos: vec![] })
+                            }
+                        },
+                        _ => {}
+                    }
+
+                    scope.throw_exception("undefined is not a function".to_string(), vec![0, 0]);
+                    Err(Error { msg: "".to_string(), pos: vec![] })
                 }
             }
         },
@@ -337,13 +377,13 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
             }
         },
         Node::IfElseStatement(cond, if_node, else_node) => {
-            // FIXME: scope?
+            // FIXME: stack?
             if walk_tree(*cond, scope)?.as_bool() {
                 return walk_tree(*if_node, scope)
             }
 
             if else_node.is_none() {
-                return Ok(CocoValue::CocoNull)
+                return Ok(Value::Null)
             }
 
             walk_tree(else_node.unwrap(), scope)
@@ -353,8 +393,8 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<CocoValue, String> {
                 walk_tree(*node.clone(), scope);
             }
 
-            Ok(CocoValue::CocoNull)
+            Ok(Value::Null)
         }
-        _ => Ok(CocoValue::CocoNull)
+        _ => Ok(Value::Null)
     }
 }

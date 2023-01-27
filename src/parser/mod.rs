@@ -1,12 +1,7 @@
 use std::collections::{ BTreeMap };
 
-use crate::{lexer::{ Token, TokenType }, interpreter::types::{FuncArgs, FuncArg}};
-use lazy_static::lazy_static;
+use crate::{lexer::{ Token, TokenType }, interpreter::types::{FunctionArguments, FunctionArgument}, Error, Resolver};
 use phf::phf_map;
-
-lazy_static! {
-    static ref EOF: Token = Token { token_type: TokenType::EOF, text: '\0'.to_string() };
-}
 
 const ASSIGNOP: phf::Map<&str, AssignmentOp> = phf_map! {
     "=" => AssignmentOp::EQ,
@@ -78,7 +73,7 @@ pub enum Node {
     Bool(bool),
     Array(Vec<Box<Node>>),
     Object(BTreeMap<String, Box<Node>>),
-    Class(String, BTreeMap<String, Node>, Option<Box<Node>>),
+    Class(String, Option<Box<Node>>, BTreeMap<String, Node>),
     Null,
 
     // ArrayFun()
@@ -93,7 +88,7 @@ pub enum Node {
     // FIXME: args
     FunCall(Box<Node>, Vec<Box<Node>>),
     Return(Box<Node>),
-    Fun(Box<Node>, FuncArgs, Box<Node>),
+    Fun(Box<Node>, FunctionArguments, Box<Node>),
     Logical(LogicalOp, Box<Node>, Box<Node>),
     Binary(BinaryOp, Box<Node>, Box<Node>),
     Unary(UnaryOp, Box<Node>),
@@ -102,47 +97,49 @@ pub enum Node {
 
 pub struct Parser {
     tokens: Vec<Token>,
-    pos: usize
+    pos: usize,
+    resolver: Resolver
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: Vec<Token>, resolver: &Resolver) -> Self {
         Self {
             tokens,
-            pos: 0
+            pos: 0,
+            resolver: resolver.to_owned()
         }
     }
 
-    pub fn parse(&mut self) -> Result<Node, String> {
+    pub fn parse(&mut self) -> Result<Node, Error> {
         let mut root: Vec<Box<Node>> = vec![];
 
-        while let Err(_b) = self.match_token(TokenType::EOF) {
+        while !self.match_token(TokenType::EOF) {
             root.push(Box::new(self.statement()?))
         }
 
         Ok(Node::BlockStatement(root))
     }
 
-    pub fn block(&mut self) -> Result<Node, String> {
+    pub fn block(&mut self) -> Result<Node, Error> {
         let mut root: Vec<Box<Node>> = vec![];
 
         self.match_token(TokenType::LBRACE);
-        while let Err(_b) = self.match_token(TokenType::RBRACE) {
+        while !self.match_token(TokenType::RBRACE) {
             root.push(Box::new(self.statement()?))
         }
 
         Ok(Node::BlockStatement(root))
     }
 
-    pub fn statement_or_block(&mut self) -> Result<Node, String> {
-        if let Ok(_b) = self.match_token(TokenType::LBRACE) {
+    pub fn statement_or_block(&mut self) -> Result<Node, Error> {
+        if self.match_token(TokenType::LBRACE) {
             return self.block()
         }
 
         self.statement()
     }
 
-    pub fn statement(&mut self) -> Result<Node, String> {
+    pub fn statement(&mut self) -> Result<Node, Error> {
         let current = self.get_token(None);
 
         match current.token_type {
@@ -155,7 +152,7 @@ impl Parser {
                 Ok(
                     Node::Assign(
                         Box::new(
-                            Node::Var(name?.text)
+                            Node::Var(name.text)
                         ), 
                         Box::new(
                             value?
@@ -167,10 +164,10 @@ impl Parser {
                 self.match_token(TokenType::FUN);
                 let name = self.consume_token(TokenType::WORD);
                 self.consume_token(TokenType::LPAR);
-                let mut args: FuncArgs = FuncArgs::new(vec![]);
-                while let Err(_b) = self.match_token(TokenType::RPAR) {
+                let mut args: FunctionArguments = FunctionArguments::new(vec![]);
+                while !self.match_token(TokenType::RPAR) {
                     let arg = self.consume_token(TokenType::WORD);
-                    args.add_argument(FuncArg::Required(arg?.text));
+                    args.add(FunctionArgument::Required(arg.text));
                     self.match_token(TokenType::COMMA);
                 }
                 let block = self.block();
@@ -178,7 +175,7 @@ impl Parser {
                 Ok(
                     Node::Fun(
                         Box::new(
-                            Node::Var(name?.text)
+                            Node::Var(name.text)
                         ), 
                         args,
                         Box::new(
@@ -189,22 +186,22 @@ impl Parser {
             },
             TokenType::CLASS => {
                 self.match_token(TokenType::CLASS);
-                let class_name = self.consume_token(TokenType::WORD)?.text;
+                let class_name = self.consume_token(TokenType::WORD).text;
                 // TODO extending
                 self.match_token(TokenType::LBRACE);
                 let mut prototype: BTreeMap<String, Node> = BTreeMap::default();
                 let mut constructor = None;
-                while let Err(_b) = self.match_token(TokenType::RBRACE) {
+                while !self.match_token(TokenType::RBRACE) {
                     let class_current = self.get_token(None);
 
                     if class_current.token_type == TokenType::WORD {
-                        let name = self.consume_token(TokenType::WORD)?.text;
+                        let name = self.consume_token(TokenType::WORD).text;
                         // TODO vars
                         self.consume_token(TokenType::LPAR);
-                        let mut args: FuncArgs = FuncArgs::new(vec![]);
-                        while let Err(_b) = self.match_token(TokenType::RPAR) {
+                        let mut args: FunctionArguments = FunctionArguments::new(vec![]);
+                        while !self.match_token(TokenType::RPAR) {
                             let arg = self.consume_token(TokenType::WORD);
-                            args.add_argument(FuncArg::Required(arg?.text));
+                            args.add(FunctionArgument::Required(arg.text));
                             self.match_token(TokenType::COMMA);
                         }
                         let block = self.block();
@@ -233,7 +230,7 @@ impl Parser {
                     }
                 }
 
-                Ok(Node::Class(class_name, prototype, constructor))
+                Ok(Node::Class(class_name, constructor, prototype))
             }
             TokenType::IF => {
                 self.match_token(TokenType::IF);
@@ -243,7 +240,7 @@ impl Parser {
                 let if_statement = self.statement_or_block();
 
                 let mut else_statement: Option<Node> = None;
-                if let Ok(_b) = self.match_token(TokenType::ELSE) {
+                if self.match_token(TokenType::ELSE) {
                     else_statement = Some(self.statement_or_block()?);
                 }
 
@@ -274,27 +271,28 @@ impl Parser {
                 // FIXME
                 self.match_token(TokenType::IMPORT);
                 if self.get_token(None).token_type == TokenType::STRING {
-                    let lib_name = self.consume_token(TokenType::STRING)?.text;
+                    let lib_name = self.consume_token(TokenType::STRING).text;
 
                     return Ok(Node::Import(lib_name))
                 }
                 let mut libs = vec![];
                 while self.get_token(None).token_type == TokenType::WORD {
-                    libs.push(self.consume_token(TokenType::WORD)?.text);
-                    if let Err(_b) = self.consume_token(TokenType::COMMA) {
+                    libs.push(self.consume_token(TokenType::WORD).text);
+                    // if let Err(_b) = self.match_token(TokenType::COMMA) {
+                    if !self.match_token(TokenType::COMMA) {
                         break
                     }
                 }
 
                 self.consume_token(TokenType::FROM);
-                let lib_name = self.consume_token(TokenType::STRING)?.text;
+                let lib_name = self.consume_token(TokenType::STRING).text;
                 Ok(Node::ImportFrom(lib_name, libs))
             },
             _ => Ok(self.expression()?)
         }
     }
 
-    pub fn switch_statement(&mut self) -> Result<Node, String> {
+    pub fn switch_statement(&mut self) -> Result<Node, Error> {
         self.match_token(TokenType::SWITCH);
         self.consume_token(TokenType::LPAR);
         // FIXME: variables only
@@ -304,7 +302,7 @@ impl Parser {
         let mut cases: Vec<SwitchCase> = vec![]; 
 
         self.match_token(TokenType::LBRACE);
-        while let Err(_b) = self.match_token(TokenType::RBRACE) {
+        while !self.match_token(TokenType::RBRACE) {
             let current = self.get_token(None);
             match current.token_type {
                 
@@ -315,7 +313,10 @@ impl Parser {
                     }).count();
 
                     if count_default_cases == 1 {
-                        return Err("Switch case can not have two or more default cases".to_string())
+                        return Err(Error {
+                            msg: "Switch case can not have two or more default cases".to_string(),
+                            pos: self.resolver.resolve_where(self.get_token(None).pos)
+                        })
                     }
 
                     self.consume_token(TokenType::COLON);
@@ -347,8 +348,8 @@ impl Parser {
         )
     }
 
-    pub fn expression(&mut self) -> Result<Node, String> {
-        let assign = self.assignment_expression()?;
+    pub fn expression(&mut self) -> Result<Node, Error> {
+        let assign = self.assignment_expression().unwrap();
 
         if let Some(a) = assign {
             return Ok(a)
@@ -357,7 +358,7 @@ impl Parser {
         self.ternary_expression()
     }
 
-    pub fn primary_expression(&mut self) -> Result<Node, String> {
+    pub fn primary_expression(&mut self) -> Result<Node, Error> {
         let current = self.get_token(None);
 
         // FIXME
@@ -389,14 +390,26 @@ impl Parser {
             },
             
             TokenType::SWITCH => Ok(self.switch_statement()?),
+
+            TokenType::NEW => {
+                self.match_token(TokenType::NEW);
+                let var = self.variable_expression()?;
+                let field_access = self.field_access_expression(var)?;
+
+                self.function_chain_expression(field_access)
+            }
+
             _ => {
-                println!("{:#?}", current);
-                panic!("Unknown expression")
+                //println!("{:#?}", current);
+                Err(Error {
+                    msg: "Unknown expression".to_string(),
+                    pos: self.resolver.resolve_where(self.get_token(None).pos)
+                })
             }
         }
     }
 
-    pub fn function_chain_expression(&mut self, variable: Node) -> Result<Node, String> {
+    pub fn function_chain_expression(&mut self, variable: Node) -> Result<Node, Error> {
         let fun_call = self.function_call_expression(variable);
 
         if self.get_token(None).token_type == TokenType::LPAR {
@@ -404,7 +417,7 @@ impl Parser {
         }
 
         if self.get_token(None).token_type == TokenType::DOT {
-            let suffixes = self.variable_suffixes()?;
+            let suffixes = self.variable_suffixes().unwrap();
             if suffixes.is_empty() {
                 return fun_call;
             }
@@ -419,11 +432,11 @@ impl Parser {
         fun_call
     }
 
-    pub fn function_call_expression(&mut self, variable: Node) -> Result<Node, String> {
+    pub fn function_call_expression(&mut self, variable: Node) -> Result<Node, Error> {
         self.consume_token(TokenType::LPAR);
         let mut args = vec![];
 
-        while let Err(_b) = self.match_token(TokenType::RPAR) {
+        while !self.match_token(TokenType::RPAR) {
             args.push(Box::new(self.expression()?));
             self.match_token(TokenType::COMMA);
         }
@@ -431,7 +444,7 @@ impl Parser {
         Ok(Node::FunCall(Box::new(variable), args))
     }
 
-    pub fn var_val_expression(&mut self) -> Result<Node, String> {
+    pub fn var_val_expression(&mut self) -> Result<Node, Error> {
         if self.get_token(None).token_type == TokenType::WORD {
             return self.variable_expression()
         }
@@ -448,12 +461,12 @@ impl Parser {
         let mut indices = vec![];
 
         while self.get_token(None).token_type == TokenType::DOT || self.get_token(None).token_type == TokenType::LBRACKET {
-            if self.match_token(TokenType::DOT).is_ok() {
-                let field = self.consume_token(TokenType::WORD)?.text;
+            if self.match_token(TokenType::DOT) {
+                let field = self.consume_token(TokenType::WORD).text;
                 indices.push(Box::new(Node::String(field)));
             }
-            if self.match_token(TokenType::LBRACKET).is_ok() {
-                indices.push(Box::new(self.expression()?));
+            if self.match_token(TokenType::LBRACKET) {
+                indices.push(Box::new(self.expression().unwrap()));
                 self.match_token(TokenType::RBRACKET);
             }
         } 
@@ -461,8 +474,8 @@ impl Parser {
         Ok(indices)
     }
 
-    pub fn field_access_expression(&mut self, variable: Node) -> Result<Node, String> {
-        let indices = self.variable_suffixes()?;
+    pub fn field_access_expression(&mut self, variable: Node) -> Result<Node, Error> {
+        let indices = self.variable_suffixes().unwrap();
 
         if !indices.is_empty() {
             return Ok(Node::FieldAccess(Box::new(variable), indices))
@@ -471,7 +484,7 @@ impl Parser {
         Ok(variable)
     }
 
-    pub fn variable_expression(&mut self) -> Result<Node, String> {
+    pub fn variable_expression(&mut self) -> Result<Node, Error> {
         let current = self.get_token(None);
 
         match current.token_type {
@@ -482,12 +495,15 @@ impl Parser {
             }
             _ => {
                 // FIXME: ?
-                Err("Unknown variable".to_owned())
+                Err(Error {
+                    msg: "Unknown variable".to_string(),
+                    pos: self.resolver.resolve_where(self.get_token(None).pos)
+                })
             }
         }
     }
 
-    pub fn value_expression(&mut self) -> Result<Node, String> {
+    pub fn value_expression(&mut self) -> Result<Node, Error> {
         let current = self.get_token(None);
 
         match current.token_type {
@@ -516,7 +532,7 @@ impl Parser {
             TokenType::LBRACKET => {
                 self.match_token(TokenType::LBRACKET);
                 let mut values = vec![];
-                while let Err(_b) = self.match_token(TokenType::RBRACKET) {
+                while !self.match_token(TokenType::RBRACKET) {
                     values.push(Box::new(self.expression()?));
                     self.match_token(TokenType::COMMA);   
                 }
@@ -526,8 +542,8 @@ impl Parser {
             TokenType::LBRACE => {
                 self.match_token(TokenType::LBRACE);
                 let mut map = BTreeMap::new();
-                while let Err(_b) = self.match_token(TokenType::RBRACE) {
-                    let name = self.consume_token(TokenType::WORD)?.text;
+                while !self.match_token(TokenType::RBRACE) {
+                    let name = self.consume_token(TokenType::WORD).text;
                     self.consume_token(TokenType::COLON);
                     map.insert(name, Box::new(self.expression()?));
                     self.match_token(TokenType::COMMA);   
@@ -561,13 +577,13 @@ impl Parser {
 
         let op = ASSIGNOP.get(&current.text).unwrap();
 
-        Ok(Some(Node::AssignOp(op.to_owned(), Box::new(field_access.unwrap()), Box::new(self.expression()?))))
+        Ok(Some(Node::AssignOp(op.to_owned(), Box::new(field_access.unwrap()), Box::new(self.expression().unwrap()))))
     } 
 
-    pub fn ternary_expression(&mut self) -> Result<Node, String> {
+    pub fn ternary_expression(&mut self) -> Result<Node, Error> {
         let mut result = self.logical_or_expression()?;
 
-        if self.match_token(TokenType::QUESTION).is_ok() {
+        if self.match_token(TokenType::QUESTION) {
             let true_condition = self.expression()?;
             self.consume_token(TokenType::COLON);
             let false_condition = self.expression()?;
@@ -577,10 +593,10 @@ impl Parser {
         Ok(result)
     }
 
-    pub fn logical_or_expression(&mut self) -> Result<Node, String> {
+    pub fn logical_or_expression(&mut self) -> Result<Node, Error> {
         let mut result = self.logical_and_expression()?;
         loop {
-            if self.match_token(TokenType::BARBAR).is_ok() {
+            if self.match_token(TokenType::BARBAR) {
                 result = Node::Logical(LogicalOp::OR, Box::new(result), Box::new(self.logical_and_expression()?));
                 continue;
             }
@@ -590,10 +606,10 @@ impl Parser {
         Ok(result)
     }
 
-    pub fn logical_and_expression(&mut self) -> Result<Node, String> {
+    pub fn logical_and_expression(&mut self) -> Result<Node, Error> {
         let mut result = self.logical_eq_expression()?;
         loop {
-            if self.match_token(TokenType::AMPAMP).is_ok() {
+            if self.match_token(TokenType::AMPAMP) {
                 result = Node::Logical(LogicalOp::AND, Box::new(result), Box::new(self.logical_eq_expression()?));
                 continue;
             }
@@ -603,14 +619,14 @@ impl Parser {
         Ok(result)
     }
 
-    pub fn logical_eq_expression(&mut self) -> Result<Node, String> {
+    pub fn logical_eq_expression(&mut self) -> Result<Node, Error> {
         let mut result = self.logical_cond_expression()?;
         loop {
-            if self.match_token(TokenType::EQEQ).is_ok() {
+            if self.match_token(TokenType::EQEQ) {
                 result = Node::Logical(LogicalOp::EQ, Box::new(result), Box::new(self.logical_cond_expression()?));
                 continue;
             }
-            if self.match_token(TokenType::EXCLEQ).is_ok() {
+            if self.match_token(TokenType::EXCLEQ) {
                 result = Node::Logical(LogicalOp::NOTEQ, Box::new(result), Box::new(self.logical_cond_expression()?));
                 continue;
             }
@@ -620,22 +636,22 @@ impl Parser {
         Ok(result)
     }
 
-    pub fn logical_cond_expression(&mut self) -> Result<Node, String> {
+    pub fn logical_cond_expression(&mut self) -> Result<Node, Error> {
         let mut result = self.binary_add_expression()?;
         loop {
-            if self.match_token(TokenType::GT).is_ok() {
+            if self.match_token(TokenType::GT) {
                 result = Node::Logical(LogicalOp::GT, Box::new(result), Box::new(self.binary_add_expression()?));
                 continue;
             }
-            if self.match_token(TokenType::GTEQ).is_ok() {
+            if self.match_token(TokenType::GTEQ) {
                 result = Node::Logical(LogicalOp::GTEQ, Box::new(result), Box::new(self.binary_add_expression()?));
                 continue;
             }
-            if self.match_token(TokenType::LT).is_ok() {
+            if self.match_token(TokenType::LT) {
                 result = Node::Logical(LogicalOp::LT, Box::new(result), Box::new(self.binary_add_expression()?));
                 continue;
             }
-            if self.match_token(TokenType::LTEQ).is_ok() {
+            if self.match_token(TokenType::LTEQ) {
                 result = Node::Logical(LogicalOp::LTEQ, Box::new(result), Box::new(self.binary_add_expression()?));
                 continue;
             }
@@ -645,15 +661,15 @@ impl Parser {
         Ok(result)
     }
 
-    pub fn binary_add_expression(&mut self) -> Result<Node, String> {
+    pub fn binary_add_expression(&mut self) -> Result<Node, Error> {
         let mut result = self.binary_mul_expression()?;
 
         loop {
-            if self.match_token(TokenType::PLUS).is_ok() {
+            if self.match_token(TokenType::PLUS) {
                 result = Node::Binary(BinaryOp::PLUS, Box::new(result), Box::new(self.binary_mul_expression()?));
                 continue;
             }
-            if self.match_token(TokenType::MINUS).is_ok() {
+            if self.match_token(TokenType::MINUS) {
                 result = Node::Binary(BinaryOp::MINUS, Box::new(result), Box::new(self.binary_mul_expression()?));
                 continue;
             }
@@ -663,22 +679,22 @@ impl Parser {
         Ok(result)
     }
 
-    pub fn binary_mul_expression(&mut self) -> Result<Node, String>  {
+    pub fn binary_mul_expression(&mut self) -> Result<Node, Error>  {
         let mut result = self.unary_expression()?;
         loop {
-            if self.match_token(TokenType::STAR).is_ok() {
+            if self.match_token(TokenType::STAR) {
                 result = Node::Binary(BinaryOp::MULTIPLY, Box::new(result), Box::new(self.unary_expression()?));
                 continue;
             }
-            if self.match_token(TokenType::SLASH).is_ok() {
+            if self.match_token(TokenType::SLASH) {
                 result = Node::Binary(BinaryOp::DIVIDE, Box::new(result), Box::new(self.unary_expression()?));
                 continue;
             }
-            if self.match_token(TokenType::PERCENT).is_ok() {
+            if self.match_token(TokenType::PERCENT) {
                 result = Node::Binary(BinaryOp::REMAINDER, Box::new(result), Box::new(self.unary_expression()?));
                 continue;
             } 
-            if self.match_token(TokenType::DOUBLESTAR).is_ok() {
+            if self.match_token(TokenType::DOUBLESTAR) {
                 result = Node::Binary(BinaryOp::EXPONENT, Box::new(result), Box::new(self.unary_expression()?));
                 continue;
             }
@@ -688,43 +704,47 @@ impl Parser {
         Ok(result)
     }
 
-    pub fn unary_expression(&mut self) -> Result<Node, String> {
-        // FIXME: neverloop
-        loop {
-            if self.match_token(TokenType::MINUS).is_ok() {
-                return Ok(Node::Unary(UnaryOp::MINUS, Box::new(self.expression()?)));
-            }
-            else if self.match_token(TokenType::EXCL).is_ok() {
-                return Ok(Node::Unary(UnaryOp::NOT, Box::new(self.expression()?)));
-            } else {
-                return Ok(self.primary_expression()?)
-            }
+    pub fn unary_expression(&mut self) -> Result<Node, Error> {
+        if self.match_token(TokenType::MINUS) {
+            return Ok(Node::Unary(UnaryOp::MINUS, Box::new(self.expression()?)))
+        } else if self.match_token(TokenType::EXCL) {
+            return Ok(Node::Unary(UnaryOp::NOT, Box::new(self.expression()?)));
         }
+
+        self.primary_expression()
     }
 
-    pub fn consume_token(&mut self, token_type: TokenType) -> Result<Token, String> {
+    pub fn consume_token(&mut self, token_type: TokenType) -> Token {
         let current = self.get_token(None);
         if current.token_type != token_type {
-            return Err(format!("Token {:#?} didnt match {:#?}", token_type, current.token_type));
+            self.resolver.exit_error(
+                format!("Token {:#?} didnt match {:#?}", token_type, current.token_type),
+                vec![0,0]
+            );
         }
 
         self.pos += 1;
-        Ok(current)
+        current
     }
 
-    pub fn match_token(&mut self, token_type: TokenType) -> Result<bool, bool> {
+    pub fn match_token(&mut self, token_type: TokenType) -> bool {
         let current = self.get_token(None);
         if current.token_type != token_type {
-            return Err(false)
+            return false
         }
+
         self.pos += 1;
-        Ok(true)
+        true
     }
 
     pub fn get_token(&self, pos: Option<usize>) -> Token {
         let current = self.pos + pos.unwrap_or(0);
         if current >= self.tokens.len() {
-            return EOF.to_owned()
+            return Token { 
+                token_type: TokenType::EOF, 
+                text: "\0".to_string(), 
+                pos: self.tokens.len() + 1
+            }
         }
 
         self.tokens.iter().peekable().nth(current).unwrap().to_owned()
