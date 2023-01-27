@@ -20,7 +20,9 @@ log('total cocos:', coco)
 
 # running
 
-currently, it does not support repl, so only way to execute any coco is to run via file
+coco supports repl, but it is in not capable of some features.
+
+it is recommended to run files, rather than in repl itself
 
 ```bash
 $ cargo run filename.coco
