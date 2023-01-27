@@ -1,7 +1,12 @@
 import argv from 'io'
 
+// read two numbers from argv
+let num1 = num(argv[0])
+let num2 = num(argv[1])
+
+// random function to see how would values change it
 fun calc(a, b) {
     return (a * b / (a + b)) % (a / b)
 }
 
-log(calc(num(argv[0]), num(argv[1])))
+log(calc(num1, num2))

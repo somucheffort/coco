@@ -1,7 +1,1 @@
-class Rect {
-    constructor() {
-
-    }
-
-    square() {}
-}
+log(1)

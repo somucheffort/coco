@@ -1,3 +1,4 @@
+// random function lol
 fun sumAndPower(a, b) {
     return a ** b + b ** a 
 }
