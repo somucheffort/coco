@@ -1,7 +1,7 @@
 import read from 'io'
 
 let name = read('Hi! Input your name:')
-let age = number(read('And, input your age:'))
+let age = num(read('And, input your age:'))
 
 age = age == NaN ? '...huh?' : age
 
