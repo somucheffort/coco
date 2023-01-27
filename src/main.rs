@@ -13,6 +13,14 @@ use lexer::{ Lexer };
 use parser::{ Parser };
 use interpreter::{ scope::{ Scope }, walk_tree };
 
+pub fn error_message(msg: String) {
+    println!("{}: {msg}", "ERR".bold().red());
+}
+
+pub fn warn_message(msg: String) {
+    println!("{}: {msg}", "WARN".bold().yellow());
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Error {
     msg: String,
@@ -22,7 +30,8 @@ pub struct Error {
 impl Error {
     pub fn exit(&self, filename: String) {
         let pos = self.pos.iter().map(|u| (*u as i64).to_string()).collect::<Vec<String>>();
-        println!("{}: {}\n     at: {}:{}", "ERR".bold().red(), self.msg, filename, &pos.join(":"));
+        
+        error_message(format!("{}\n     at: {}:{}", self.msg, filename, &pos.join(":")));
         exit(-1)
     }
 }
@@ -93,14 +102,14 @@ fn run_file(filename: String) {
 
     let result = walk_tree(parsed.unwrap(), &mut scope);
 
-    //println!("{:#?}", stack);
-
     if let Err(e) = result {
         e.exit(filename)
     }
 }
 
 fn run_repl() {
+    warn_message("currently, repl is in development. some features would not work.\n".to_string());
+
     let filename = "<repl>".to_string();
     let mut scope = Scope::new(filename.clone());
     let resolver = Resolver::new(filename.clone(), "".to_string());
@@ -114,7 +123,7 @@ fn run_repl() {
             let tokens = lexer.analyse();
 
             if let Err(e) = tokens {
-                println!("{}: {}\n     at: {}:0:0", "ERR".bold().red(), e.msg, &filename);
+                error_message(format!("{}\n     at: {}:0:0", e.msg, &filename));
                 return
             }
 
@@ -124,13 +133,16 @@ fn run_repl() {
             let parsed = parser.parse();
 
             if let Err(e) = parsed.as_ref() {
-                println!("{}: {}\n     at: {}:0:0", "ERR".bold().red(), e.msg, &filename);
+                error_message(format!("{}\n     at: {}:0:0", e.msg, &filename));
                 return
             }
 
             let result = walk_tree(parsed.unwrap(), &mut scope);
 
-            // print!("{buffer}")
+            if let Err(e) = result {
+                error_message(format!("{}\n     at: {}:0:0", e.msg, &filename));
+                return
+            }
         }
     }
 }
@@ -139,9 +151,6 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        //println!("{}: Expected filename, e.g. \n     {}", "ERR".bold().red(), "coco filename.co".bold());
-        //exit(-1)
-
         run_repl()
     }
 
