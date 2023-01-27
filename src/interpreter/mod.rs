@@ -1,12 +1,12 @@
 use core::panic;
-use std::{collections::{BTreeMap, HashMap}, cmp::Ordering};
+use std::{collections::{BTreeMap}, cmp::Ordering};
 
 use crate::{parser::{ Node, SwitchCase, LogicalOp, BinaryOp, UnaryOp, AssignmentOp }, modules::import_module, Error};
 
 pub mod scope;
 pub mod types;
 
-use self::{scope::{ Scope }, types::{Value, FieldAccessor, FuncImpl, FunctionArgument}};
+use self::{scope::{ Scope }, types::{Value, FieldAccessor, FuncImpl}};
 
 pub struct Interpreter {}
 
@@ -81,7 +81,7 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<Value, Error> {
                 scope.set(name, initial_value.clone());
             }
 
-            if let Node::FieldAccess(var, indices) = *variable_node.clone() {
+            if let Node::FieldAccess(var, indices) = *variable_node {
                 if let Node::Var(name) = *var.clone() {
                     let var_value = walk_tree(*var, scope)?;
                     let fields = indices.iter().map(|i| walk_tree(*i.to_owned(), scope).unwrap_or(Value::Null)).collect::<Vec<Value>>();

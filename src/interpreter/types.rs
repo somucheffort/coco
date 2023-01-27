@@ -6,7 +6,7 @@ use regex::Regex;
 
 use crate::parser::Node;
 
-use super::{scope::{Scope}, walk_tree};
+use super::{scope::{Scope}};
 
 
 

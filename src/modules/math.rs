@@ -109,7 +109,6 @@ fn get_max() -> Value {
             .into_iter()
             .max_by(|v1, v2| v1.as_number().total_cmp(&v2.as_number()))
             .unwrap_or(Value::Null)
-            .to_owned()
         }
     ))
 }
@@ -124,7 +123,6 @@ fn get_min() -> Value {
             .into_iter()
             .min_by(|v1, v2| v1.as_number().total_cmp(&v2.as_number()))
             .unwrap_or(Value::Null)
-            .to_owned()
         }
     ))
 }

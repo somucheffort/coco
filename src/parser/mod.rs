@@ -510,24 +510,24 @@ impl Parser {
             TokenType::STRING => {
                 self.match_token(current.token_type);
                 let value = current.text;
-                return Ok(Node::String(value))
+                Ok(Node::String(value))
             },
             TokenType::NUMBER => {
                 self.match_token(current.token_type);
                 let value = current.text.parse::<f64>().unwrap();
-                return Ok(Node::Number(value))
+                Ok(Node::Number(value))
             },
             TokenType::BOOLEAN => {
                 self.match_token(current.token_type);
-                return Ok(Node::Bool(current.text == "true"))
+                Ok(Node::Bool(current.text == "true"))
             },
             TokenType::NULL => {
                 self.match_token(current.token_type);
-                return Ok(Node::Null)
+                Ok(Node::Null)
             },
             TokenType::NAN => {
                 self.match_token(current.token_type);
-                return Ok(Node::Number(f64::NAN))
+                Ok(Node::Number(f64::NAN))
             },
             TokenType::LBRACKET => {
                 self.match_token(TokenType::LBRACKET);
@@ -537,7 +537,7 @@ impl Parser {
                     self.match_token(TokenType::COMMA);   
                 }
 
-                return Ok(Node::Array(values));
+                Ok(Node::Array(values))
             },
             TokenType::LBRACE => {
                 self.match_token(TokenType::LBRACE);
@@ -549,7 +549,7 @@ impl Parser {
                     self.match_token(TokenType::COMMA);   
                 }
 
-                return Ok(Node::Object(map))
+                Ok(Node::Object(map))
             },
             _ => {
                 // FIXME: ?
