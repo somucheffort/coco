@@ -83,6 +83,8 @@ fn run_file(filename: String) {
     let mut lexer = Lexer::new(&input, &resolver);
     let tokens = lexer.analyse();
 
+    println!("{:#?}", lexer.tokens);
+
     if let Err(e) = tokens {
         e.exit(filename.to_string())
     }
