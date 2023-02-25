@@ -81,9 +81,12 @@ pub enum Node {
     Var(String),
     FieldAccess(Box<Node>, Vec<Box<Node>>),
 
+    Range(Box<Node>, Box<Node>, bool),
+
     BlockStatement(Vec<Box<Node>>),
     IfElseStatement(Box<Node>, Box<Node>, Box<Option<Node>>),
     WhileStatement(Box<Node>, Box<Node>),
+    ForStatement(String, Box<Node>, Box<Node>),
     SwitchStatement(Box<Node>, Vec<SwitchCase>),
     // FIXME: args
     FunCall(Box<Node>, Vec<Box<Node>>),
@@ -249,6 +252,23 @@ impl Parser {
                         Box::new(condition?),
                         Box::new(if_statement?),
                         Box::new(else_statement)
+                    )
+                )
+            },
+            TokenType::FOR => {
+                self.match_token(TokenType::FOR);
+                self.consume_token(TokenType::LPAR);
+                let variable = self.consume_token(TokenType::WORD).text;
+                self.consume_token(TokenType::IN);
+                let iterator = self.expression()?;
+                self.consume_token(TokenType::RPAR);
+                let block = self.block()?;
+
+                Ok(
+                    Node::ForStatement(
+                        variable,
+                        Box::new(iterator),
+                        Box::new(block)
                     )
                 )
             },
@@ -503,6 +523,19 @@ impl Parser {
         }
     }
 
+    pub fn range_expression(&mut self, from: Node) -> Result<Node, Error> {
+        let inclusive = self.match_token(TokenType::EQUALS);
+        let to = self.var_val_expression()?;
+        
+        Ok(
+            Node::Range(
+                Box::new(from),
+                Box::new(to),
+                inclusive
+            )
+        )
+    }
+
     pub fn value_expression(&mut self) -> Result<Node, Error> {
         let current = self.get_token(None);
 
@@ -515,7 +548,13 @@ impl Parser {
             TokenType::NUMBER => {
                 self.match_token(current.token_type);
                 let value = current.text.parse::<f64>().unwrap();
-                Ok(Node::Number(value))
+                let node = Node::Number(value);
+
+                if self.match_token(TokenType::DOTDOT) {
+                    return self.range_expression(node)
+                }
+                
+                Ok(node)
             },
             TokenType::BOOLEAN => {
                 self.match_token(current.token_type);

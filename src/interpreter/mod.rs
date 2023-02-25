@@ -394,7 +394,54 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<Value, Error> {
             }
 
             Ok(Value::Null)
-        }
+        },
+        Node::ForStatement(variable, iterator, block) => {
+            let iter = walk_tree(*iterator, scope)?;
+
+            match &iter {
+                Value::String(str) => {
+                    let str_splitted = str
+                        .chars()
+                        .map(|ch| Value::String(ch.to_string()))
+                        .collect::<Vec<Value>>();
+
+                    for value in str_splitted {
+                        scope.set(variable.clone(), value);
+                        walk_tree(*block.clone(), scope);
+                    }
+
+                    Ok(Value::Null)
+                },
+                Value::Array(values) => {
+                    let values_unboxed = values.iter().map(|val| *val.to_owned()).collect::<Vec<Value>>();
+                    for value in values_unboxed {
+                        scope.set(variable.clone(), value);
+                        walk_tree(*block.clone(), scope);
+                    }
+
+                    Ok(Value::Null)
+                },
+                _ => {
+                    scope.throw_exception("Value cannot be iterated".to_string(), vec![0, 0]);
+                    Err(Error { msg: "Value cannot be iterated".to_string(), pos: vec![0, 0] })
+                }
+            }
+        },
+        Node::Range(from, to, inclusive) => {
+            let from_value = walk_tree(*from, scope)?.as_number();
+            let to_value = walk_tree(*from, scope)?.as_number();
+
+
+            if inclusive {
+
+                let b = vec![(from_value..to_value)];
+                return Ok(Value::Array(
+                    
+                ))
+            }
+
+            Ok(Value::Array())
+        },
         _ => Ok(Value::Null)
     }
 }
