@@ -58,6 +58,7 @@ const OPERATORS: phf::Map<&str, TokenType> = phf_map! {
     "||" => TokenType::BARBAR,
     "->" => TokenType::ARROW,
     "." => TokenType::DOT,
+    ".." => TokenType::DOTDOT,
     "..." => TokenType::SPREAD,
     "?" => TokenType::QUESTION,
     ":" => TokenType::COLON,
@@ -141,7 +142,8 @@ pub enum TokenType {
     AMPAMP, // &&
     BARBAR, // ||
     ARROW, // ->
-    SPREAD, // ..
+    SPREAD, // ...
+    DOTDOT, // ..
 
     EOF
 }
@@ -223,17 +225,18 @@ impl Lexer {
     pub fn parse_number(&mut self) -> Result<(), Error> {
         let mut buffer: String = "".to_owned();
         let mut current = self.peek(None);
+
         loop {
             if current == '.' {
                 if buffer.contains('.') {
-                    return Err(Error { 
-                        msg: "Invalid float".to_owned(), 
-                        pos: self.resolver.resolve_where(self.pos) 
-                    })
+                    self.pos -= 1;
+                    buffer.pop();
+                    break
                 }
             } else if !DIGITS.contains(current) {
                 break
             }
+
             buffer.push(current);
             current = self.next_char();
         }
