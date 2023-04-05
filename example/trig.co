@@ -1,0 +1,23 @@
+import sin, cos, tan, PI, round from 'math'
+
+log(sin(PI / 2)) // 1
+
+log(sin(5 * PI / 6)) // ~ 1/2
+
+log(cos(PI)) // -1
+
+log(tan(PI / 4)) // ~ 1
+
+log(
+    round(
+        cos(5 * PI / 4)
+        / 
+        sin (5 * PI / 4)
+    )
+    == 
+    round(
+        1 
+        / 
+        tan(5 * PI / 4)
+    )
+) // true

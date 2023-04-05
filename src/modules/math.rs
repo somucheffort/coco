@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap};
+use std::{collections::BTreeMap, f64::consts::PI};
 use rand::{ thread_rng, Rng };
 
 use crate::interpreter::{scope::{Scope}, types::{Value, FuncImpl, FieldAccessor, FunctionArguments, FunctionArgument}};
@@ -26,6 +26,8 @@ impl CocoModule for MathModule {
 fn get_math() -> Value {
     Value::Object(
         BTreeMap::from([ 
+            ("PI".to_string(), Box::new(Value::Number(PI))),
+
             ("pow".to_string(), Box::new(get_pow())),
             ("abs".to_string(), Box::new(get_abs())),
             ("ceil".to_string(), Box::new(get_ceil())),
@@ -33,7 +35,10 @@ fn get_math() -> Value {
             ("round".to_string(), Box::new(get_round())),
             ("random".to_string(), Box::new(get_random())),
             ("max".to_string(), Box::new(get_max())),
-            ("min".to_string(), Box::new(get_min()))
+            ("min".to_string(), Box::new(get_min())),
+            ("sin".to_string(), Box::new(get_sin())),
+            ("cos".to_string(), Box::new(get_cos())),
+            ("tan".to_string(), Box::new(get_tan()))
         ])
     )
 }
@@ -123,6 +128,36 @@ fn get_min() -> Value {
             .into_iter()
             .min_by(|v1, v2| v1.as_number().total_cmp(&v2.as_number()))
             .unwrap_or(Value::Null)
+        }
+    ))
+}
+
+fn get_sin() -> Value {
+    Value::Function(
+        "sin".to_owned(),
+        FunctionArguments::new(Vec::from([FunctionArgument::Required("num".to_string())])),
+        FuncImpl::Builtin(|args| {
+            Value::Number(args.get("num").unwrap().as_number().sin())
+        }
+    ))
+}
+
+fn get_cos() -> Value {
+    Value::Function(
+        "sin".to_owned(),
+        FunctionArguments::new(Vec::from([FunctionArgument::Required("num".to_string())])),
+        FuncImpl::Builtin(|args| {
+            Value::Number(args.get("num").unwrap().as_number().cos())
+        }
+    ))
+}
+
+fn get_tan() -> Value {
+    Value::Function(
+        "sin".to_owned(),
+        FunctionArguments::new(Vec::from([FunctionArgument::Required("num".to_string())])),
+        FuncImpl::Builtin(|args| {
+            Value::Number(args.get("num").unwrap().as_number().tan())
         }
     ))
 }
