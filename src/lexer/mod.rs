@@ -331,8 +331,6 @@ impl Lexer {
     pub fn add_token(&mut self, token_type: TokenType, text: &str) {
         let token = Token { token_type, text: text.to_owned(), pos: self.pos };
 
-        println!("{:#?}", token);
-
         self.tokens.push(token)
     }
 }
