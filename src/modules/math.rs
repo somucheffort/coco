@@ -144,7 +144,7 @@ fn get_sin() -> Value {
 
 fn get_cos() -> Value {
     Value::Function(
-        "sin".to_owned(),
+        "cos".to_owned(),
         FunctionArguments::new(Vec::from([FunctionArgument::Required("num".to_string())])),
         FuncImpl::Builtin(|args| {
             Value::Number(args.get("num").unwrap().as_number().cos())
@@ -154,7 +154,7 @@ fn get_cos() -> Value {
 
 fn get_tan() -> Value {
     Value::Function(
-        "sin".to_owned(),
+        "tan".to_owned(),
         FunctionArguments::new(Vec::from([FunctionArgument::Required("num".to_string())])),
         FuncImpl::Builtin(|args| {
             Value::Number(args.get("num").unwrap().as_number().tan())
