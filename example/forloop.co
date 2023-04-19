@@ -1,5 +1,5 @@
-for (x in 0..3) {
-    for (y in 0..3) {
+for (x in 0..2) {
+    for (y in 0..2) {
         log('($x, $y)')
     }
 }

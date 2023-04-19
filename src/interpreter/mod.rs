@@ -431,19 +431,18 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<Value, Error> {
             }
         },
         Node::Range(from, to, inclusive) => {
-            let from_value = walk_tree(*from, scope)?.as_number();
-            let to_value = walk_tree(*from, scope)?.as_number();
+            let from_value = walk_tree(*from, scope)?.as_number() as u64;
+            let to_value = walk_tree(*to, scope)?.as_number() as u64;
 
-
+            let mut range: Vec<u64> = (from_value..to_value).collect();
+            
             if inclusive {
-
-                let b = vec![(from_value..to_value)];
-                return Ok(Value::Array(
-                    
-                ))
+                range.push(to_value);
             }
 
-            Ok(Value::Array())
+            Ok(Value::Array(
+                range.iter().map(|v| Box::new(Value::Number(*v as f64))).collect()
+            ))
         },
         _ => Ok(Value::Null)
     }
