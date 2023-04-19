@@ -20,7 +20,7 @@ log('total cocos:', coco)
 
 # running
 
-coco supports repl, but it is in not capable of some features.
+coco supports repl, but it is not capable of some features.
 
 it is recommended to run files, rather than in repl itself
 

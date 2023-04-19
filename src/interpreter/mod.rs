@@ -61,7 +61,10 @@ pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<Value, Error> {
                     initial_value = Value::Number(initial_value.as_number() - set_value.as_number());
                 },
                 AssignmentOp::PLUSEQ => {
-                    initial_value = Value::Number(initial_value.as_number() + set_value.as_number());
+                    initial_value = match initial_value.clone() {
+                        Value::String(_) => Value::String(initial_value.as_string() + &set_value.as_string()),
+                        _ => Value::Number(initial_value.as_number() + set_value.as_number())
+                    }
                 },
                 AssignmentOp::MULEQ => {
                     initial_value = Value::Number(initial_value.as_number() * set_value.as_number());

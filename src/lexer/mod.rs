@@ -322,11 +322,8 @@ impl Lexer {
 
     pub fn peek(&self, pos: Option<usize>) -> char {
         let current = self.pos + pos.unwrap_or(0);
-        if current >= self.code.len() {
-            return '\0'
-        }
 
-        self.code.chars().nth(current).unwrap()
+        self.code.chars().nth(current).unwrap_or('\0')
     }
 
     pub fn next_char(&mut self) -> char {
@@ -336,6 +333,7 @@ impl Lexer {
 
     pub fn add_token(&mut self, token_type: TokenType, text: &str) {
         let token = Token { token_type, text: text.to_owned(), pos: self.pos };
+
         self.tokens.push(token)
     }
 }
