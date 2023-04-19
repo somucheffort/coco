@@ -550,6 +550,7 @@ impl Parser {
                 let value = current.text.parse::<f64>().unwrap();
                 let node = Node::Number(value);
 
+                // FIXME: variables in first place
                 if self.match_token(TokenType::DOTDOT) {
                     return self.range_expression(node)
                 }
