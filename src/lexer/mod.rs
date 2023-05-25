@@ -31,7 +31,8 @@ const KEYWORDS: phf::Map<&str, TokenType> = phf_map! {
     "this" =>  TokenType::THIS,
     "import" => TokenType::IMPORT,
     "from" => TokenType::FROM,
-    "NaN" => TokenType::NAN
+    "NaN" => TokenType::NAN,
+    "as" => TokenType::AS,
 };
 
 const OPERATORS: phf::Map<&str, TokenType> = phf_map! {
@@ -99,6 +100,7 @@ pub enum TokenType {
     THIS, // this
     IMPORT, // import
     FROM, // from
+    AS, // as
     
     NULL, // null
     NUMBER, // 0

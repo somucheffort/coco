@@ -1,30 +1,14 @@
 use std::{collections::BTreeMap, f64::consts::PI};
 use rand::{ thread_rng, Rng };
 
-use crate::interpreter::{scope::{Scope}, types::{Value, FuncImpl, FieldAccessor, FunctionArguments, FunctionArgument}};
+use crate::interpreter::{types::{Value, FuncImpl, FunctionArguments, FunctionArgument}};
 
 use super::CocoModule;
 
 pub struct MathModule {}
 
 impl CocoModule for MathModule {
-    fn init(scope: &mut Scope, objects: Option<Vec<String>>) {
-        let math = get_math();
-
-        if let Some(objects_some) = objects {
-            for obj in objects_some.iter() {
-                let mut field_accessor = FieldAccessor::new(math.clone(), Vec::from([Value::String(obj.to_string())]));
-                let value = field_accessor.get(scope);
-                scope.set(obj.to_string(), value);
-            }
-            return
-        }
-        scope.set("math".to_string(), math);
-    }
-}
-
-fn get_math() -> Value {
-    Value::Object(
+    fn get() -> BTreeMap<String, Box<Value>> {
         BTreeMap::from([ 
             ("PI".to_string(), Box::new(Value::Number(PI))),
 
@@ -40,7 +24,7 @@ fn get_math() -> Value {
             ("cos".to_string(), Box::new(get_cos())),
             ("tan".to_string(), Box::new(get_tan()))
         ])
-    )
+    }
 }
 
 fn get_pow() -> Value {

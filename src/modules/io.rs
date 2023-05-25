@@ -1,36 +1,20 @@
 use std::{collections::BTreeMap, io::{ self, Write }, env};
 
-use crate::interpreter::{scope::{Scope}, types::{Value, FuncImpl, FieldAccessor, FunctionArguments, FunctionArgument}};
+use crate::interpreter::{types::{Value, FuncImpl, FunctionArguments, FunctionArgument}};
 
 use super::CocoModule;
 
 pub struct IOModule {}
 
 impl CocoModule for IOModule {
-    fn init(scope: &mut Scope, objects: Option<Vec<String>>) {
-        let io = get_io();
-
-        if let Some(objects_some) = objects {
-            for obj in objects_some.iter() {
-                let mut field_accessor = FieldAccessor::new(io.clone(), Vec::from([Value::String(obj.to_string())]));
-                let value = field_accessor.get(scope);
-                scope.set(obj.to_string(), value);
-            }
-            return
-        }
-        scope.set("io".to_string(), io);
-    }
-}
-
-fn get_io() -> Value {
-    Value::Object(
+    fn get() -> BTreeMap<String, Box<Value>> {
         BTreeMap::from([ 
             ("argv".to_string(), Box::new(get_argv())),
             ("read".to_string(), Box::new(get_read())),
             ("stdin".to_string(), Box::new(get_stdin())),
             ("stdout".to_string(), Box::new(get_stdout()))
         ])
-    )
+    }
 }
 
 fn get_argv() -> Value {

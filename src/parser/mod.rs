@@ -62,8 +62,8 @@ pub enum SwitchCase {
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Node {
-    Import(String),
-    ImportFrom(String, Vec<String>),
+    ImportPlaceholder(String, String),
+    ImportObjects(String, Vec<String>),
 
     Assign(Box<Node>, Box<Node>),
     AssignOp(AssignmentOp, Box<Node>, Box<Node>),
@@ -290,23 +290,36 @@ impl Parser {
             TokenType::IMPORT => {
                 // FIXME
                 self.match_token(TokenType::IMPORT);
-                if self.get_token(None).token_type == TokenType::STRING {
+
+                // import * as name from 'name'
+                if self.get_token(None).token_type == TokenType::STAR {
+                    self.match_token(TokenType::STAR);
+                    self.match_token(TokenType::AS);
+                    let placeholder = self.consume_token(TokenType::WORD).text;
+
+                    self.match_token(TokenType::FROM);
+
                     let lib_name = self.consume_token(TokenType::STRING).text;
 
-                    return Ok(Node::Import(lib_name))
+                    return Ok(Node::ImportPlaceholder(lib_name, placeholder))
                 }
-                let mut libs = vec![];
+
+                // import { obj1, obj2 } from 'name'
+                // FIXME: remake it to let { obj1, obj2 } = { obj2, obj1, obj3 }
+                self.match_token(TokenType::LBRACE);
+                let mut objs = vec![];
                 while self.get_token(None).token_type == TokenType::WORD {
-                    libs.push(self.consume_token(TokenType::WORD).text);
+                    objs.push(self.consume_token(TokenType::WORD).text);
                     // if let Err(_b) = self.match_token(TokenType::COMMA) {
                     if !self.match_token(TokenType::COMMA) {
                         break
                     }
                 }
+                self.match_token(TokenType::RBRACE);
 
                 self.consume_token(TokenType::FROM);
                 let lib_name = self.consume_token(TokenType::STRING).text;
-                Ok(Node::ImportFrom(lib_name, libs))
+                Ok(Node::ImportObjects(lib_name, objs))
             },
             _ => Ok(self.expression()?)
         }

@@ -12,12 +12,21 @@ pub struct Interpreter {}
 
 pub fn walk_tree(node: Node, scope: &mut Scope) -> Result<Value, Error> {
     match node {
-        Node::Import(module) => {
-            import_module(module.as_str(), scope, None);
+        Node::ImportPlaceholder(lib, placeholder) => {
+            let module = import_module(lib.as_str(), None);
+            scope.set(placeholder, module);
             Ok(Value::Null)
         },
-        Node::ImportFrom(module, objects) => {
-            import_module(module.as_str(), scope, Some(objects));
+        Node::ImportObjects(lib, objects) => {
+            // FIXME
+            let module = import_module(lib.as_str(), Some(objects.clone()));
+
+            for obj in objects.iter() {
+                let mut fa = FieldAccessor::new(module.clone(), Vec::from([Value::String(obj.to_string())]));
+                let value = fa.get(scope);
+                scope.set(obj.to_string(), value);
+            }
+
             Ok(Value::Null)
         },
         Node::BlockStatement(statements) => {
