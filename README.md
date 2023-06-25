@@ -1,6 +1,6 @@
 # coco
 
-coco is a dynamic-typed language similar to js and kotlin 
+coco is a dynamically typed language with simple syntax
 
 ## example
 
@@ -10,8 +10,8 @@ see [example folder](./example) for more advanced examples
 // assume we have one coco
 let coco = 1
 
+// we would add 1 coco until we have 67
 while (coco < 67) {
-    // we would add 1 coco until we have 67
     coco += 1
 }
 
@@ -25,7 +25,7 @@ coco supports repl, but it is not capable of some features.
 it is recommended to run files, rather than in repl itself
 
 ```bash
-$ cargo run filename.coco
+$ cargo run filename.co
 ```
 
 # contributing
